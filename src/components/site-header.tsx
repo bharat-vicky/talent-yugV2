@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { ArrowUpRight, Asterisk, Menu, X } from "lucide-react";
+import { ArrowUpRight, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -11,8 +11,26 @@ export function Brand({ light = false }: { light?: boolean }) {
       className={`brand ${light ? "brand-light" : ""}`}
       aria-label="TalentYug home"
     >
-      <span className="brand-symbol">
-        <Asterisk strokeWidth={2.5} />
+      <span className="brand-symbol" aria-hidden="true">
+        <svg viewBox="0 0 48 48" fill="none" focusable="false">
+          <path
+            d="M20 45H6a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3h36a3 3 0 0 1 3 3v36a3 3 0 0 1-3 3H28"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <g className="brand-symbol-figure">
+            <circle cx="24" cy="13" r="3.6" fill="currentColor" />
+            <path
+              d="m17 18 7 12 7-12M10 27l10 5v13m18-18-10 5v13"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </g>
+        </svg>
       </span>
       <span>
         Talent<span className="brand-yug">Yug</span>
