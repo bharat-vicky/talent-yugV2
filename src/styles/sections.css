@@ -418,8 +418,9 @@
   margin-top: 24px;
 }
 .price > span {
+  display: block;
   font-family: var(--font-body);
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   font-weight: 400;
   letter-spacing: 0;
   color: #74836c;
@@ -1023,7 +1024,7 @@
     font-size: 2.5rem;
   }
   .price > span {
-    font-size: 0.75rem;
+    font-size: 0.875rem;
   }
   .price-heading {
     align-items: flex-start;
@@ -1206,7 +1207,7 @@
     font-size: 2.6rem;
   }
   .price > span {
-    font-size: 0.75rem;
+    font-size: 0.875rem;
   }
   .price-card li {
     font-size: 0.78rem;

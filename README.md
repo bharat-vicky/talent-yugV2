@@ -35,7 +35,7 @@ The form validates visitor details and prepares a `mailto:` draft addressed to `
 
 ## Content sources
 
-Programme inclusions and indicative pricing come from `TalentYug_Campus_to_Company_Programme_Draft.docx`: ₹1,00,000 per college **plus** ₹999 per participating student, across three months. Commercial details must be confirmed in a written proposal. The pitch uses different student-fee and success-fee assumptions, so the website discloses that final terms may include additional fees.
+Programme inclusions come from `TalentYug_Campus_to_Company_Programme_Draft.docx`. College partnership and student participation pricing are shared through enquiries, with commercial details confirmed in a written proposal. Keep exact programme amounts out of public copy and bundled client data.
 
 Early impact numbers come from page 6 of `Talantyug pitch.pdf`. They are presented as company-reported early traction, with placements and internships combined. Forecasts and investor revenue models are not presented as achieved results.
 

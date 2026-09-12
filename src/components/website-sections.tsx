@@ -201,8 +201,8 @@ export function WebsiteSections() {
               </h2>
             </div>
             <p>
-              ₹1,00,000 per college, plus ₹999 per participating student. A
-              shared investment across the three-month journey.
+              Connect with our team for programme pricing, participation
+              details, and a proposal for your three-month journey.
             </p>
           </div>
           <div className="pricing-grid">
@@ -212,7 +212,7 @@ export function WebsiteSections() {
                 <span className="price-tag">For your campus</span>
               </div>
               <div className="price">
-                ₹1,00,000<span> / college</span>
+                Let’s talk<span>College pricing on enquiry</span>
               </div>
               <p>A coordinated programme, backed by institutional support.</p>
               <ul>
@@ -229,7 +229,7 @@ export function WebsiteSections() {
                 ))}
               </ul>
               <EnquiryButton audience="college" variant="outline">
-                Discuss a college partnership <ArrowUpRight size={17} />
+                Request college pricing <ArrowUpRight size={17} />
               </EnquiryButton>
             </article>
             <article className="price-card student-price" data-reveal>
@@ -238,7 +238,7 @@ export function WebsiteSections() {
                 <span className="price-tag">Within the programme</span>
               </div>
               <div className="price">
-                ₹999<span> / participating student</span>
+                Let’s talk<span>Student pricing on enquiry</span>
               </div>
               <p>Focused preparation for the opportunities ahead.</p>
               <ul>
@@ -255,15 +255,15 @@ export function WebsiteSections() {
                 ))}
               </ul>
               <EnquiryButton audience="student" variant="outline">
-                Explore student participation <ArrowUpRight size={17} />
+                Request student pricing <ArrowUpRight size={17} />
               </EnquiryButton>
             </article>
           </div>
           <p className="pricing-note">
-            Indicative pricing from our programme draft. Request a written
-            proposal for the final scope, taxes, payment terms, and any
-            additional success-linked fees. Opportunities depend on student
-            readiness and employer requirements; placement is not guaranteed.
+            Pricing is shared directly by our team. Your written proposal will
+            explain the programme scope, fees, applicable taxes, and payment
+            terms. Opportunities depend on student readiness and employer
+            requirements; placement is not guaranteed.
           </p>
         </div>
       </section>

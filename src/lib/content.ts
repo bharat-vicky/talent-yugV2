@@ -94,9 +94,9 @@ export const faqs = [
       "A three-month partnership between TalentYug and a college. It connects student development, industry exposure, screening, hiring preparation, and campus-drive coordination into one structured journey. The final delivery schedule is agreed with the institution.",
   },
   {
-    question: "What is included in the programme fee?",
+    question: "How can I find out the programme pricing?",
     answer:
-      "The programme draft lists ₹1,00,000 per college for institutional support, programme coordination, recruiter outreach, campus-drive management, dashboard access, and reporting. Participating student career access is listed at ₹999 per student, covering screening, training, projects, assessments, résumé preparation, and mock interviews. These are indicative draft prices; request a written proposal for applicable taxes, payment terms, and any additional success-linked fee.",
+      "Please enquire with our team for college partnership and student participation pricing. Institutional support includes programme coordination, recruiter outreach, campus-drive management, dashboard access, and reporting. Student career access covers screening, training, projects, assessments, résumé preparation, and mock interviews. Your written proposal will set out the full scope, applicable fees and taxes, and payment terms before you decide.",
   },
   {
     question: "Does TalentYug guarantee a placement?",
