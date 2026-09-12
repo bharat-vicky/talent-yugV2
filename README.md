@@ -41,6 +41,8 @@ Early impact numbers come from page 6 of `Talantyug pitch.pdf`. They are present
 
 Contact details, founder identity/portrait, and social links were verified on https://www.talentyug.in and its about/companies pages on 12 September 2026. Conflicting street addresses are intentionally simplified to Bihar, India. The hero is generated illustrative photography, not a photograph of actual TalentYug students or staff. Original business documents are preserved locally and excluded from Git/public output.
 
+The rotating founder showcase uses the three labelled portraits from slide 12 of `Presentation2.pptx`. The original team image is displayed through CSS portrait windows. It advances every five seconds while visible, pauses on hover or focus, and provides manual selection and pause controls. Reduced-motion preferences disable automatic rotation.
+
 ## Maintenance
 
 Update programme facts and contact details in the content module and section components. Confirm pricing and traction before releasing public marketing updates. No authentication, checkout, analytics, or claimed placement guarantees are included.

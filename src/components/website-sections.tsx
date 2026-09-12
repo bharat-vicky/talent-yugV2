@@ -1,4 +1,3 @@
-import Image from "next/image";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -19,6 +18,7 @@ import {
 import { AudienceCards } from "@/components/audience-cards";
 import { EnquiryButton, EnquiryDialog } from "@/components/enquiry";
 import { Faq } from "@/components/faq";
+import { FounderShowcase } from "@/components/founder-showcase";
 import { ScrollMotion } from "@/components/motion";
 import { Brand } from "@/components/site-header";
 import { business, phases } from "@/lib/content";
@@ -295,41 +295,7 @@ export function WebsiteSections() {
             Get to know TalentYug <ArrowUpRight size={17} />
           </a>
         </div>
-        <div className="founder-card" data-reveal>
-          <div className="founder-card-top">
-            <span className="eyebrow">THE PEOPLE BEHIND THE PURPOSE</span>
-            <Asterisk size={39} strokeWidth={1.5} />
-          </div>
-          <div className="founder-profile">
-            <Image
-              src="/images/gautam-kumar.jpg"
-              width={94}
-              height={94}
-              alt="Gautam Kumar, founder of TalentYug"
-            />
-            <div>
-              <h3>Gautam Kumar</h3>
-              <span>Founder, TalentYug</span>
-              <span className="founder-location">
-                <MapPin size={12} /> Bihar, India
-              </span>
-            </div>
-          </div>
-          <p>
-            Building a stronger bridge between the classroom and the working
-            world.
-          </p>
-          <div className="team-line">
-            <span>With the TalentYug team</span>
-            <strong>
-              Hridayanand Gupta <span>·</span> Ritu Raj
-            </strong>
-          </div>
-          <div className="founder-bottom">
-            <ShieldCheck size={17} /> TalentYug Pvt. Ltd.{" "}
-            <span>People first. Progress together.</span>
-          </div>
-        </div>
+        <FounderShowcase />
       </section>
 
       <section className="faq-section">
