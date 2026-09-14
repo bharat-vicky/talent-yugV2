@@ -25,13 +25,24 @@ const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
 // Portrait positions reference the unchanged team photograph on slide 12.
 const founders = [
-  { name: "Gautam Kumar", position: "-208.293%", shortName: "Gautam" },
+  {
+    name: "Gautam Kumar",
+    role: "Managing Director, TalentYug",
+    position: "-208.293%",
+    shortName: "Gautam",
+  },
   {
     name: "Hridayanand Gupta",
+    role: "Director & CTO, TalentYug",
     position: "-377.073%",
     shortName: "Hridayanand",
   },
-  { name: "Ritu Raj", position: "-538.537%", shortName: "Ritu" },
+  {
+    name: "Ritu Raj",
+    role: "Director & COO, TalentYug",
+    position: "-538.537%",
+    shortName: "Ritu",
+  },
 ] as const;
 
 function subscribeToReducedMotion(onChange: () => void) {
@@ -172,7 +183,7 @@ export function FounderShowcase() {
             <div className={styles.profile}>
               <span className={styles.profileEyebrow}>MEET OUR FOUNDERS</span>
               <h3>{founder.name}</h3>
-              <span className={styles.role}>Co-founder, TalentYug</span>
+              <span className={styles.role}>{founder.role}</span>
               <span className={styles.location}>
                 <MapPin size={13} aria-hidden="true" /> Bihar, India
               </span>
