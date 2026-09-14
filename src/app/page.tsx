@@ -109,7 +109,7 @@ export default function Home() {
               <span>Placements & internships</span>
             </div>
             <div className="stat">
-              <strong>12</strong>
+              <strong>20</strong>
               <span>Company partners</span>
             </div>
             <div className="stat">

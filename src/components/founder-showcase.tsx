@@ -39,7 +39,7 @@ const founders = [
   },
   {
     name: "Ritu Raj",
-    role: "Director & COO, TalentYug",
+    role: "Director & CEO, TalentYug",
     position: "-538.537%",
     shortName: "Ritu",
   },
