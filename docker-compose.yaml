@@ -22,13 +22,15 @@ services:
       args:
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?Set the public URL ending in /pahchaan}
     environment:
-      MONGODB_URI: ${MONGODB_URI:?Set a MongoDB replica set or Atlas URI}
+      # Coolify evaluates this file for both build and startup. Runtime secrets
+      # must not make the build require them as Docker build arguments.
+      MONGODB_URI: ${MONGODB_URI:-}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
-      NEXTAUTH_URL: ${NEXTAUTH_URL:?Set the public URL ending in /pahchaan/api/auth}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-}
       NEXTAUTH_URL_INTERNAL: http://pahchaan:3000/pahchaan/api/auth
-      AUTH_SECRET: ${AUTH_SECRET:?Set a random authentication secret}
-      JOB_WORKER_SECRET: ${JOB_WORKER_SECRET:?Set an independent worker secret}
-      JOB_ENCRYPTION_KEY: ${JOB_ENCRYPTION_KEY:?Set a base64 encoded 32-byte key}
+      AUTH_SECRET: ${AUTH_SECRET:-}
+      JOB_WORKER_SECRET: ${JOB_WORKER_SECRET:-}
+      JOB_ENCRYPTION_KEY: ${JOB_ENCRYPTION_KEY:-}
       AUTH_GOOGLE_ID: ${AUTH_GOOGLE_ID:-}
       AUTH_GOOGLE_SECRET: ${AUTH_GOOGLE_SECRET:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
