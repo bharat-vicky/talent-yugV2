@@ -11,6 +11,7 @@ import {
   Mail,
   MapPin,
   Phone,
+  ScanLine,
   ShieldCheck,
   Sparkles,
   Users,
@@ -104,7 +105,7 @@ export function WebsiteSections() {
         </div>
       </section>
 
-      <section className="container section support">
+      <section className="container section support" id="products">
         <div className="section-heading" data-reveal>
           <div>
             <span className="eyebrow">PREPARATION WITH PURPOSE</span>
@@ -185,6 +186,33 @@ export function WebsiteSections() {
             >
               Find your direction <ArrowUpRight size={18} />
             </EnquiryButton>
+          </article>
+          <article className="pragyan-card pahchaan-card" data-reveal>
+            <div className="pragyan-top">
+              <span className="eyebrow">EVERY GUEST. A WARM WELCOME.</span>
+              <ScanLine size={23} strokeWidth={1.5} />
+            </div>
+            <div className="pragyan-word">
+              pahchaan<span> by TalentYug</span>
+            </div>
+            <h3>
+              Bring people together.
+              <br />
+              Make every arrival count.
+            </h3>
+            <p>
+              From campus events to community gatherings, manage registrations,
+              create QR passes, and welcome your guests with easy check-ins.
+            </p>
+            <div className="pragyan-tags">
+              <span>Registration forms</span>
+              <span>QR passes</span>
+              <span>Guest management</span>
+              <span>Easy check-ins</span>
+            </div>
+            <a href="/pahchaan" className="button button-ghost card-link">
+              Explore Pahchaan <ArrowUpRight size={18} />
+            </a>
           </article>
         </div>
       </section>

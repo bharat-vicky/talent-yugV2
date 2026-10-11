@@ -269,6 +269,10 @@
   gap: 25px;
 }
 .support-feature {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 48px;
   border: 1px solid var(--line);
   border-radius: 11px;
   padding: 34px 36px;
@@ -300,6 +304,9 @@
 }
 .portfolio-preview {
   display: flex;
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  align-self: center;
   flex-direction: column;
   gap: 9px;
   margin-top: 28px;
@@ -339,6 +346,10 @@
   font-size: 0.75rem;
 }
 .pragyan-word {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 9px;
   font-family: var(--font-editorial);
   font-style: italic;
   font-size: 3.3rem;
@@ -351,7 +362,8 @@
   font-style: normal;
   font-size: 0.75rem;
   letter-spacing: 0;
-  margin-left: 9px;
+  white-space: nowrap;
+  line-height: 1.5;
   color: #937d53;
 }
 .pragyan-card h3 {
@@ -376,6 +388,20 @@
 }
 .pragyan-card .card-link {
   border-top-color: #ded0b3;
+}
+.pahchaan-card {
+  background: #e8efe8;
+  border-color: #c9d9cf;
+}
+.pahchaan-card .pragyan-top,
+.pahchaan-card .pragyan-word > span,
+.pahchaan-card > p,
+.pahchaan-card .pragyan-tags > span {
+  color: #48685a;
+}
+.pahchaan-card .pragyan-tags > span,
+.pahchaan-card .card-link {
+  border-color: #c3d5c9;
 }
 .investment-section {
   border-block: 1px solid var(--line);
@@ -1051,6 +1077,9 @@
   }
 }
 @media (max-width: 760px) {
+  .support-feature {
+    display: block;
+  }
   .section-heading {
     display: block;
     margin-bottom: 31px;

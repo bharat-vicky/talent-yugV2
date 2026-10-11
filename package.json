@@ -3,7 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --hostname 127.0.0.1",
+    "dev:all": "node scripts/dev.mjs",
+    "build:all": "npm run build && npm --prefix Pahchaan run build",
+    "test:integration": "node --test tests/integration.test.cjs",
+    "dev": "node scripts/dev.mjs",
+    "dev:marketing": "next dev --hostname 127.0.0.1",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",

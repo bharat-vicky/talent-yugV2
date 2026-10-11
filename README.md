@@ -2,23 +2,36 @@
 
 A responsive Next.js website for TalentYug's campus-to-career business, with TypeScript, Redux Toolkit, accessible Radix/shadcn-style components, local imagery, and reduced-motion support.
 
+Pahchaan is integrated at `/pahchaan` in the same repository and domain. See
+[Coolify deployment and environment variables](docs/COOLIFY.md) for the combined
+Docker Compose stack. `npm run dev` runs both applications locally
+(`npm run dev:all` is an alias).
+
 ## Run locally
 
 Use Node.js 22 or later.
 
 ```sh
 npm ci
+npm ci --prefix Pahchaan
 npm run dev
 ```
 
-The preview runs at http://127.0.0.1:3000.
+The preview runs at http://localhost:3000, with Pahchaan at
+http://localhost:3000/pahchaan. Put shared credentials in the root `.env.local`.
+Shell variables take precedence over root environment files; Pahchaan's own
+`.env.local` supplies any remaining settings. The launcher automatically uses
+local authentication URLs. Restart after changing environment variables.
+Use `npm run dev:marketing` only when working on the marketing site alone.
 
 ```sh
 npm run typecheck
 npm run build
 ```
 
-The production site is exported to `out/`. Serve that directory with any static host. `next start` is not used for static exports.
+The marketing site is exported to `out/`. The complete TalentYug + Pahchaan site
+requires the root Docker Compose deployment; a static host alone cannot run
+Pahchaan's authenticated APIs, MongoDB transactions or background jobs.
 
 ## Structure
 

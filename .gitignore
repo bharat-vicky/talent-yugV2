@@ -1,5 +1,6 @@
 node_modules/
 .next/
+.next-webpack/
 out/
 .env*
 !.env.example
@@ -37,3 +38,36 @@ GEMINI.md
 .github/instructions/
 .github/agents/
 .github/prompts/
+
+# Imported Pahchaan local databases, archives and generated audit output
+Pahchaan/*.tgz
+Pahchaan/.reference/
+Pahchaan/docs/test-results/
+
+# Generated reports, local caches, editor and operating-system files
+docs/test-results/
+# Local assistant audit notes can contain test inbox and account details.
+docs/AUTH-REVIEW.md
+coverage/
+.nyc_output/
+.cache/
+.turbo/
+.vercel/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Private keys, certificates, database files and local backups
+*.pem
+*.key
+*.p12
+*.pfx
+*.sqlite
+*.sqlite3
+*.db
+*.bak
+*.dump
+*.mongodump
+*.tgz
