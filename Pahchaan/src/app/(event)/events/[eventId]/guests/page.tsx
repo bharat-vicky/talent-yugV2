@@ -39,6 +39,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { GuestDocument, GuestStatus } from "@/domain/types";
 import { toast } from "sonner";
+import { selectedGuestsCsv } from "@/lib/guest-export";
 
 export default function GuestLibraryPage({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = use(params);
@@ -146,31 +147,22 @@ export default function GuestLibraryPage({ params }: { params: Promise<{ eventId
   };
 
   const handleExportSelected = () => {
-    if (!data) return;
-    const selected = data.filter(g => selectedGuests.has(g._id as string));
-    if (selected.length === 0) return;
-
-    const headers = ["First Name", "Last Name", "Email", "Organization", "Status", "Created At"];
-    const csvContent = [
-      headers.join(","),
-      ...selected.map(g => [
-        `"${g.firstName}"`,
-        `"${g.lastName}"`,
-        `"${g.email}"`,
-        `"${g.organization || ""}"`,
-        `"${g.status}"`,
-        `"${new Date(g.createdAt).toLocaleString()}"`
-      ].join(","))
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `guests_export_${new Date().getTime()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      const { csv, count } = selectedGuestsCsv(data ?? [], selectedGuests);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `guests_${eventId}_${Date.now()}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      // Allow the browser to start the download before releasing its URL.
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success(`Export started for ${count} guest${count === 1 ? "" : "s"}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not export guests. Please try again.");
+    }
   };
 
   const handleSingleAction = async (guestId: string, action: string) => {
@@ -319,7 +311,7 @@ export default function GuestLibraryPage({ params }: { params: Promise<{ eventId
               placeholder="Search by name, email, or company..." 
               className="pl-9 bg-background"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setSelectedGuests(new Set()); }}
             />
           </div>
           
@@ -331,7 +323,7 @@ export default function GuestLibraryPage({ params }: { params: Promise<{ eventId
             <select 
               className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => { setStatusFilter(e.target.value); setSelectedGuests(new Set()); }}
             >
               <option value="all">All Statuses</option>
               <option value="approved">Approved</option>
@@ -351,22 +343,21 @@ export default function GuestLibraryPage({ params }: { params: Promise<{ eventId
                 More Actions
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => handleBulkAction("approved")}>
+                <DropdownMenuItem onClick={() => handleBulkAction("approved")}>
                   <CheckCircle2 className="w-4 h-4 mr-2 text-green-500" /> Approve All
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => handleBulkAction("rejected")}>
+                <DropdownMenuItem onClick={() => handleBulkAction("rejected")}>
                   <XCircle className="w-4 h-4 mr-2 text-red-500" /> Reject All
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={(e) => {
-                  e.preventDefault();
+                <DropdownMenuItem onClick={() => {
                   handleNotifyAction(Array.from(selectedGuests));
                 }} disabled={isNotifying}>
                   {isNotifying ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Inbox className="w-4 h-4 mr-2" />}
                   Send Invitations & Badges
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => handleExportSelected()}>
+                <DropdownMenuItem onClick={handleExportSelected}>
                   <Download className="w-4 h-4 mr-2" /> Export Selected
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -418,6 +409,7 @@ export default function GuestLibraryPage({ params }: { params: Promise<{ eventId
                 <th className="px-4 py-3 w-12 text-center">
                   <input 
                     type="checkbox" 
+                    aria-label="Select all guests"
                     className="rounded border-gray-300 text-primary focus:ring-primary"
                     onChange={(e) => {
                       if (e.target.checked) {
@@ -426,7 +418,7 @@ export default function GuestLibraryPage({ params }: { params: Promise<{ eventId
                         setSelectedGuests(new Set());
                       }
                     }}
-                    checked={selectedGuests.size === data.length && data.length > 0}
+                    checked={data.length > 0 && data.every(guest => selectedGuests.has(String(guest._id)))}
                   />
                 </th>
                 <th className="px-4 py-3 font-medium">Guest</th>
@@ -445,6 +437,7 @@ export default function GuestLibraryPage({ params }: { params: Promise<{ eventId
                   <td className="px-4 py-4 text-center">
                     <input 
                       type="checkbox" 
+                      aria-label={`Select ${guest.firstName} ${guest.lastName}`}
                       className="rounded border-gray-300 text-primary focus:ring-primary"
                       checked={selectedGuests.has(guest._id as string)}
                       onChange={() => toggleSelect(guest._id as string)}

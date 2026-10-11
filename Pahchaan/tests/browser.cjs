@@ -22,6 +22,38 @@ module.exports=async function browserChecks({base,db,test,assert,event,a,second,
   await test('BROWSER form builder hydrates and renders questions',async()=>{
    await page.goto(base+`/events/${event._id}/registration`);await page.locator('input[value="First Name"]').first().waitFor({timeout:15000});assert.equal(errors.length,0,errors.join('\n'));
   });
+  await test('BROWSER Guest Library exports selected registration data by mouse and keyboard',async()=>{
+   const {ObjectId}=require('mongodb'),fs=require('node:fs'),Papa=require('papaparse');
+   const selectedId=new ObjectId(),otherId=new ObjectId();
+   await db.collection('guests').insertMany([
+    {_id:selectedId,workspaceId:a._id,eventId:event._id,firstName:'Export',lastName:'Selected',email:'selected-export@example.test',phone:'+919876543210',status:'approved',organization:'Company, "Quoted"',customData:{Comment:'पहचान\nWelcome',Formula:'=1+1'},groupIds:[],tags:[],checkIns:[],createdAt:new Date(),updatedAt:new Date()},
+    {_id:otherId,workspaceId:a._id,eventId:event._id,firstName:'Export',lastName:'Other',email:'other-export@example.test',status:'approved',groupIds:[],tags:[],checkIns:[],createdAt:new Date(),updatedAt:new Date()}
+   ]);
+   try {
+    await page.goto(base+`/events/${event._id}/guests`);
+    await page.getByPlaceholder('Search by name, email, or company...').fill('export@example.test');
+    await page.getByRole('checkbox',{name:'Select Export Selected',exact:true}).check();
+    await page.getByRole('button',{name:'More Actions',exact:true}).click();
+    const downloaded=page.waitForEvent('download');
+    await page.getByRole('menuitem',{name:'Export Selected',exact:true}).click();
+    const download=await downloaded;
+    assert(download.suggestedFilename().endsWith('.csv'));assert.equal(await download.failure(),null);
+    const text=fs.readFileSync(await download.path(),'utf8');
+    assert(text.startsWith('\uFEFF'));
+    const rows=Papa.parse(text,{header:true,skipEmptyLines:true});assert.equal(rows.errors.length,0);
+    assert.equal(rows.data.length,1);assert.equal(rows.data[0].Email,'selected-export@example.test');
+    assert.equal(rows.data[0].Organization,'Company, "Quoted"');assert.equal(rows.data[0]['Registration: Comment'],'पहचान\nWelcome');assert.equal(rows.data[0]['Registration: Formula'],"'=1+1");
+    await page.getByText('Export started for 1 guest',{exact:true}).waitFor();
+    await page.screenshot({path:path.join(__dirname,'../docs/test-results/guest-export.png'),fullPage:true});
+    await page.getByRole('button',{name:'More Actions',exact:true}).click();
+    const keyboardDownload=page.waitForEvent('download');
+    await page.getByRole('menuitem',{name:'Export Selected',exact:true}).focus();
+    await page.getByRole('menuitem',{name:'Export Selected',exact:true}).press('Enter');
+    assert.equal(await (await keyboardDownload).failure(),null);
+    await page.getByPlaceholder('Search by name, email, or company...').fill('Other');
+    assert.equal(await page.getByRole('button',{name:'More Actions',exact:true}).count(),0);
+   } finally { await db.collection('guests').deleteMany({_id:{$in:[selectedId,otherId]}}); }
+  });
   await test('BROWSER Pahchaan syncs scans saved in the existing offline database',async()=>{
    const {ObjectId}=require('mongodb'),id=new ObjectId(),owner=await db.collection('users').findOne({email:'owner@example.com'});await db.collection('qr_codes').insertOne({_id:id,workspaceId:a._id,eventId:event._id,status:'active',name:'Legacy offline queue fixture',scanCount:0});
    await page.evaluate(async ({eventId,operatorId,ticketId})=>{await new Promise((resolve,reject)=>{const opening=indexedDB.open('IdentityScannerDB',1);opening.onupgradeneeded=()=>{const store=opening.result.createObjectStore('scans',{keyPath:'id'});store.createIndex('by-event','eventId');store.createIndex('by-status','syncStatus');};opening.onerror=()=>reject(opening.error);opening.onsuccess=()=>{const database=opening.result,transaction=database.transaction('scans','readwrite');transaction.objectStore('scans').put({id:'legacy-offline-browser',eventId,operatorId,qrPayload:ticketId,direction:'in',timestamp:new Date(),scannerId:'test',method:'qr_scan',retryCount:0,syncStatus:'pending'});transaction.oncomplete=()=>{database.close();resolve();};transaction.onerror=()=>reject(transaction.error);};});},{eventId:event._id,operatorId:owner._id.toString(),ticketId:id.toString()});
