@@ -6,6 +6,7 @@ Pahchaan is integrated at `/pahchaan` in the same repository and domain. See
 [Coolify deployment and environment variables](docs/COOLIFY.md) for the combined
 Docker Compose stack. `npm run dev` runs both applications locally
 (`npm run dev:all` is an alias).
+For Vercel, use the [Services deployment configuration](docs/VERCEL.md).
 
 ## Run locally
 
@@ -30,7 +31,8 @@ npm run build
 ```
 
 The marketing site is exported to `out/`. The complete TalentYug + Pahchaan site
-requires the root Docker Compose deployment; a static host alone cannot run
+requires a server deployment using Vercel Services or the root Docker Compose
+stack; a static host alone cannot run
 Pahchaan's authenticated APIs, MongoDB transactions or background jobs.
 
 ## Structure
