@@ -12,6 +12,7 @@ import { exactEmailPattern } from "@/lib/email";
 import { lockEvent, withTransaction } from "@/infrastructure/transaction";
 import { guestRepository } from "@/infrastructure/repositories/GuestRepository";
 import crypto from "node:crypto";
+import { EmailService } from "./EmailService";
 
 export class RegistrationService {
   
@@ -201,6 +202,7 @@ export class RegistrationService {
     if (!form.settings.createGuest) return;
     if (submission.guestId) {
       await GuestService.approveGuest(workspaceId, eventId, actorId, submission.guestId, !!form.settings.generateQR);
+      await this.emailBadge(workspaceId, eventId, submission.guestId, !!form.settings.generateQR);
       return;
     }
 
@@ -210,14 +212,15 @@ export class RegistrationService {
     let email = "", firstName = "Guest", lastName = "", phone = "", organization = "", title = "";
     
     for (const field of form.fields) {
-      const answer = submission.answers[field.id] as string | undefined;
-      if (!answer) continue;
+      const answer = submission.answers[field.id];
+      if (typeof answer !== "string" || !answer.trim()) continue;
       
       const label = field.label.toLowerCase();
       if (field.type === "email" || label.includes("email")) email = answer;
       else if (field.type === "phone" || label.includes("phone") || label.includes("mobile")) phone = answer;
       else if (label.includes("first")) firstName = answer;
       else if (label.includes("last")) lastName = answer;
+      else if (label.includes("name")) firstName = answer;
       else if (label.includes("org") || label.includes("company")) organization = answer;
       else if (label.includes("role") || label.includes("title") || label.includes("job") || label.includes("position") || label.includes("designation")) title = answer;
     }
@@ -252,7 +255,19 @@ export class RegistrationService {
     // Generate QR if enabled
     if (form.settings.generateQR) {
       await GuestService.approveGuest(workspaceId, eventId, actorId, guest._id as string, true);
+      await this.emailBadge(workspaceId, eventId, guest._id as string, true);
     }
+  }
+
+  // This outbox write shares the registration transaction: a retry cannot
+  // create another guest, QR, or email job. Delivery happens after commit.
+  private static async emailBadge(workspaceId: string, eventId: string, guestId: string, generateQR: boolean) {
+    if (!generateQR) return;
+    const guest = await guestRepository.findById(guestId);
+    const event = await eventRepository.findById(eventId);
+    if (!guest?.email || !guest.qrCodeId || !event) return;
+    await EmailService.sendGuestBadge(workspaceId, event, guest.email,
+      `${guest.firstName} ${guest.lastName}`.trim(), JSON.stringify({ guestId }));
   }
 
   static async rejectSubmission(workspaceId:string,eventId:string,submissionId:string,actorId:string):Promise<void> {

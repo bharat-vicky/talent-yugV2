@@ -297,6 +297,44 @@ async function main() {
       assert.equal(saved.status, "approved");
       assert(saved.guestId);
       assert((await guestRepository.findById(saved.guestId)).qrCodeId);
+      const job = await db.collection('jobs').findOne({type:'email',eventId:event._id});
+      assert(job);
+      const payload = from('lib/job-encryption.ts').decryptJobPayload(job.encryptedPayload);
+      assert.equal(payload.to, 'attendee@example.com');
+      assert(payload.subject.includes(event.name));
+      assert(payload.text.includes('keep it private'));
+      assert(payload.html.includes('cid:check-in-qr'));
+      assert.equal(payload.attachments[0].cid, 'check-in-qr');
+      const png = Buffer.from(payload.attachments[0].content, 'base64');
+      assert.equal(png.subarray(1,4).toString(), 'PNG');
+      const expected = await require('qrcode').toBuffer(JSON.stringify({guestId:saved.guestId}), {type:'png',width:600,margin:4,errorCorrectionLevel:'M'});
+      assert.deepEqual(png, expected);
+    });
+    await test("Registration retries enqueue one unique QR email", async () => {
+      const retryAnswers = {...answers, [form.fields.find(f=>f.type==='email').id]:'qr-email-retry@example.com'};
+      const first = await RegistrationService.submitRegistration(event._id, retryAnswers, undefined, 'registration-retry-123');
+      const second = await RegistrationService.submitRegistration(event._id, retryAnswers, undefined, 'registration-retry-123');
+      assert.equal(first._id, second._id);
+      const jobs = await db.collection('jobs').find({type:'email',eventId:event._id}).toArray();
+      const decode = from('lib/job-encryption.ts').decryptJobPayload;
+      assert.equal(jobs.filter(j=>decode(j.encryptedPayload).to==='qr-email-retry@example.com').length,1);
+    });
+    await test("Manual approval queues QR only after admission approval", async () => {
+      await registrationFormRepository.update(form._id,{settings:{...form.settings,autoApprove:false}});
+      const manualAnswers={...answers,[form.fields.find(f=>f.type==='email').id]:'manual@example.com'};
+      const submission=await RegistrationService.submitRegistration(event._id,manualAnswers);
+      const decode=from('lib/job-encryption.ts').decryptJobPayload;
+      const count=async()=> (await db.collection('jobs').find({type:'email',eventId:event._id}).toArray()).filter(j=>decode(j.encryptedPayload).to==='manual@example.com').length;
+      assert.equal(submission.status,'pending'); assert.equal(await count(),0);
+      await RegistrationService.approveSubmission(a._id,event._id,submission._id,owner.id);
+      await RegistrationService.approveSubmission(a._id,event._id,submission._id,owner.id);
+      assert.equal(await count(),1);
+      await registrationFormRepository.update(form._id,{settings:form.settings});
+    });
+    await test("Guest email safely escapes names and custom content",async()=>{
+      const message=from('lib/guest-email.ts').guestEmail({...event,name:'<script>Event</script>'},'<img onerror=alert(1)>','<script>message</script>');
+      assert(!message.html.includes('<script>')); assert(!message.html.includes('<img onerror'));
+      assert(message.html.includes('&lt;script&gt;'));
     });
     // Readiness assertions stay visible if a regression reopens these gaps.
     await test("READINESS: public registration rejects missing required fields", async () => assert.rejects(RegistrationService.submitRegistration(event._id, {})));
@@ -483,6 +521,18 @@ async function main() {
           assert((await response.json()).form.fields.length >= 3);
         });
         await test("HTTP invalid registration returns client error", async () => assert.equal((await http("/api/r/summit-a", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answers: {} }) })).status, 400));
+        await test("HTTP production registration renders PNG and queues one pass",async()=>{
+          const compiledAnswers={...answers,[form.fields.find(f=>f.type==='email').id]:'compiled-qr@example.test'};
+          const options={method:'POST',headers:{'Content-Type':'application/json',Origin:new URL(base).origin,'Idempotency-Key':'compiled-email-retry'},body:JSON.stringify({answers:compiledAnswers})};
+          for(let i=0;i<2;i++){
+            const response=await http('/api/r/summit-a',options);
+            assert.equal(response.status,200,await response.clone().text());
+            assert.equal((await response.json()).status,'approved');
+          }
+          const decode=from('lib/job-encryption.ts').decryptJobPayload;
+          const jobs=(await db.collection('jobs').find({type:'email',eventId:event._id}).toArray()).map(j=>decode(j.encryptedPayload)).filter(j=>j.to==='compiled-qr@example.test');
+          assert.equal(jobs.length,1); assert.equal(jobs[0].attachments[0].contentType,'image/png');
+        });
         await test("HTTP real credentials reject wrong password", async () => {
           const csrf = await (await http("/api/auth/csrf", {}, true)).json();
           const response = await http("/api/auth/callback/credentials", {

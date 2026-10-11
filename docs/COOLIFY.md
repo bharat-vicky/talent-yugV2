@@ -132,6 +132,17 @@ TWILIO_FROM=YOUR_TWILIO_SENDER
 - Signing in returns to `/pahchaan/dashboard`, not TalentYug's root.
 - Verification, reset, invitation and shared registration links include `/pahchaan`.
 - Queued email jobs are processed by `worker`; verify receipt using your SMTP account.
+  Approved public registrations automatically queue a personal check-in QR email.
+  Manual-review forms send the pass only after approval; disabling guest creation
+  or QR generation disables pass emails. An email field is needed to deliver it.
+  Emails contain an inline PNG plus a downloadable PNG, event details in IST,
+  and a plain-text alternative. Registration, guest, QR and outbox writes share
+  one transaction; submission retries do not queue another pass. SMTP delivery
+  is retried by the worker (up to five attempts). SMTP cannot guarantee exactly
+  one delivery if a connection fails after the provider accepts a message.
+  If signup returns 503, check application logs for configuration field names.
+  `JOB_ENCRYPTION_KEY` must be the base64 encoding of 32 bytes, not a placeholder.
+  Restore the existing key rather than rotating it while encrypted jobs exist.
 - Public access to `/pahchaan/api/internal/jobs` and debug endpoints is blocked at
   Nginx; the worker uses the private network and a bearer secret.
 

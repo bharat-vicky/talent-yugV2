@@ -129,7 +129,18 @@ async function main() {
       assert.equal(failure.status,503);
       assert(!(await failure.text()).includes('private-test-host'));
     } finally { JobQueueService.runNext = runNext; }
-    console.log('PASS: config failure, transaction rollback, email-first signup, SMTP inbox, verification, login, recovery and replay rejection.');
+    // Deliver a real multipart QR email through the same queue and SMTP sink.
+    await db.collection('jobs').deleteMany({status:'pending'});
+    const {EmailService}=from('application/services/EmailService.ts');
+    await EmailService.sendGuestBadge('test-workspace',{_id:'test-event',name:'Welcome Summit',date:new Date('2026-12-01T09:00:00Z'),venue:'Patna'},'guest@example.test','Asha',JSON.stringify({guestId:'unique-test-guest'}));
+    const before=inbox.length;
+    assert(await JobQueueService.runNext());
+    assert.equal(inbox.length,before+1);
+    assert(inbox.at(-1).includes('Content-ID: <check-in-qr>'));
+    assert(inbox.at(-1).includes('image/png'));
+    assert(inbox.at(-1).includes('Check-in-QR.png'));
+    assert.equal(await db.collection('jobs').countDocuments({status:'pending'}),0);
+    console.log('PASS: config failure, transaction rollback, email-first signup, SMTP inbox, verification, login, recovery, replay rejection and multipart QR delivery.');
   } finally {
     if (client) await client.close(); if (mongo) await mongo.stop();
     for (const socket of sockets) socket.destroy();
