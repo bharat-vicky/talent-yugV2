@@ -59,8 +59,15 @@ module.exports=async function browserChecks({base,db,test,assert,event,a,second,
     const payload=require('../src/lib/job-encryption.ts').decryptJobPayload(job.encryptedPayload);
     assert.equal(payload.to,'selected-export@example.test');
     const pdf=payload.attachments.find(item=>item.filename==='Badge.pdf');assert(pdf);assert.equal(Buffer.from(pdf.content,'base64').subarray(0,5).toString(),'%PDF-');
-    assert(payload.attachments.some(item=>item.filename==='Check-in-QR.png'));
     await page.getByText('Invitation queued with badge attached. Delivery will follow shortly.',{exact:true}).waitFor();
+    fs.writeFileSync(path.join(__dirname,'../docs/test-results/badge-mailed.pdf'),Buffer.from(pdf.content,'base64'));
+    const downloadedBadge=page.waitForEvent('download');await page.getByRole('button',{name:'Download PDF',exact:true}).click();
+    await (await downloadedBadge).saveAs(path.join(__dirname,'../docs/test-results/badge-downloaded.pdf'));
+    const role=page.getByTestId('badge-role-footer');assert.equal(await role.locator('span').evaluate(element=>getComputedStyle(element).whiteSpace),'nowrap');
+    await page.locator('select').filter({has:page.locator('option',{hasText:'Staff / Volunteer'})}).selectOption('Staff / Volunteer');
+    const staffBadge=page.waitForEvent('download');await page.getByRole('button',{name:'Download PDF',exact:true}).click();
+    await (await staffBadge).saveAs(path.join(__dirname,'../docs/test-results/badge-staff.pdf'));
+    assert(payload.attachments.some(item=>item.filename==='Check-in-QR.png'));
     await page.screenshot({path:path.join(__dirname,'../docs/test-results/badge-invitation.png'),fullPage:true});
     await page.goto(base+`/events/${event._id}/guests`);
     await page.getByPlaceholder('Search by name, email, or company...').fill('Other');

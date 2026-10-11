@@ -6,8 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Printer, Download, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QRCodeSVG } from "qrcode.react";
-import { toPng } from "html-to-image";
-import jsPDF from "jspdf";
+import { badgePdf } from "@/lib/badge-pdf";
 import { toast } from "sonner";
 
 export default function BadgeStudioPage({ params }: { params: Promise<{ eventId: string; guestId: string }> }) {
@@ -37,25 +36,7 @@ export default function BadgeStudioPage({ params }: { params: Promise<{ eventId:
     try {
       toast.loading("Generating PDF...", { id: "pdf-toast" });
 
-      const imgData = await toPng(badgeElement, {
-        cacheBust: true,
-        pixelRatio: 2,
-        skipFonts: true,
-        backgroundColor: "#ffffff",
-        fontEmbedCSS: '',
-        style: {
-          transform: "scale(1)",
-          transformOrigin: "top left"
-        }
-      });
-
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: [101.6, 152.4] // 4x6 inches approx
-      });
-
-      pdf.addImage(imgData, "PNG", 0, 0, 101.6, 152.4);
+      const pdf = await badgePdf(badgeElement);
       pdf.save(`Badge_${guest?.firstName}_${guest?.lastName}.pdf`);
 
       toast.success("PDF Downloaded", { id: "pdf-toast" });
@@ -74,25 +55,7 @@ export default function BadgeStudioPage({ params }: { params: Promise<{ eventId:
       setIsSending(true);
       toast.loading("Generating PDF & sending invitation...", { id: "send-toast" });
 
-      const imgData = await toPng(badgeElement, {
-        cacheBust: true,
-        pixelRatio: 2,
-        skipFonts: true,
-        backgroundColor: "#ffffff",
-        fontEmbedCSS: '',
-        style: {
-          transform: "scale(1)",
-          transformOrigin: "top left"
-        }
-      });
-
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: [101.6, 152.4] // 4x6 inches approx
-      });
-
-      pdf.addImage(imgData, "PNG", 0, 0, 101.6, 152.4);
+      const pdf = await badgePdf(badgeElement);
       const pdfDataUri = pdf.output("datauristring");
 
       const res = await fetch(`/pahchaan/api/events/${eventId}/guests/notify`, {
@@ -320,8 +283,10 @@ export default function BadgeStudioPage({ params }: { params: Promise<{ eventId:
             </div>
 
             {/* Bottom Sleek Footer */}
-            <div className={`h-12 w-full flex items-center justify-center px-8 text-[10px] font-black tracking-widest uppercase relative overflow-hidden ${theme.bottom}`}>
-              <span className="opacity-90">{badgeTemplate}</span>
+            <div data-testid="badge-role-footer"
+            style={{ flex: "0 0 48px" }}
+            className={`h-12 w-full flex items-center justify-center px-8 text-[10px] font-black tracking-widest uppercase relative overflow-hidden ${theme.bottom}`}>
+              <span className="block w-full text-center whitespace-nowrap leading-none opacity-90" style={{ flexShrink: 0 }}>{badgeTemplate}</span>
             </div>
           </div>
         </motion.div>
