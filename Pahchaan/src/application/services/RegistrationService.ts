@@ -8,6 +8,7 @@ import { RealtimeService } from "./RealtimeService";
 import { EventNotificationService } from "./EventNotificationService";
 import { RegistrationSubmission } from "@/domain/types";
 import { assertRegistrationOpen, RegistrationError, validateRegistrationAnswers } from "@/lib/registration-validation";
+import { registrationEmailFields } from "@/lib/registration-email";
 import { exactEmailPattern } from "@/lib/email";
 import { lockEvent, withTransaction } from "@/infrastructure/transaction";
 import { guestRepository } from "@/infrastructure/repositories/GuestRepository";
@@ -23,7 +24,8 @@ export class RegistrationService {
     eventId: string,
     answers: Record<string, unknown>,
     deviceMetadata?: RegistrationSubmission["deviceMetadata"],
-    idempotencyKey?: string
+    idempotencyKey?: string,
+    emailVerifiedAt?: Date
   ): Promise<RegistrationSubmission> {
     return withTransaction(async () => {
       await lockEvent(eventId);
@@ -36,19 +38,20 @@ export class RegistrationService {
           return existing;
         }
       }
-      const created = await this.submit(eventId, answers, deviceMetadata);
+      const created = await this.submit(eventId, answers, deviceMetadata, emailVerifiedAt);
       if (idempotencyKey) await registrationSubmissionRepository.update(created._id as string, { idempotencyKey, requestHash });
       return created;
     });
   }
 
-  private static async submit(eventId: string, answers: Record<string, unknown>, deviceMetadata?: RegistrationSubmission["deviceMetadata"]): Promise<RegistrationSubmission> {
+  private static async submit(eventId: string, answers: Record<string, unknown>, deviceMetadata?: RegistrationSubmission["deviceMetadata"], emailVerifiedAt?: Date): Promise<RegistrationSubmission> {
     const event = await eventRepository.findById(eventId);
     if (!event) throw new Error("Event not found");
 
     const form = await registrationFormRepository.findByEventId(eventId);
     if (!form) throw new Error("Registration form not configured for this event");
     assertRegistrationOpen(event, form);
+    form.fields = registrationEmailFields(form.fields);
     answers = validateRegistrationAnswers(form.fields, answers);
     if (form.settings.duplicateEmailPolicy !== "allow") {
       const emailField = form.fields.find(field => field.type === "email");
@@ -105,6 +108,7 @@ export class RegistrationService {
       status: initialStatus,
       answers,
       deviceMetadata,
+      emailVerifiedAt,
       submittedAt: new Date()
     };
 
@@ -216,7 +220,7 @@ export class RegistrationService {
       if (typeof answer !== "string" || !answer.trim()) continue;
       
       const label = field.label.toLowerCase();
-      if (field.type === "email" || label.includes("email")) email = answer;
+      if (field.type === "email" || label.includes("email")) { if (!email) email = answer; }
       else if (field.type === "phone" || label.includes("phone") || label.includes("mobile")) phone = answer;
       else if (label.includes("first")) firstName = answer;
       else if (label.includes("last")) lastName = answer;

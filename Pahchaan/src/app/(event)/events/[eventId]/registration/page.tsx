@@ -958,7 +958,7 @@ export default function RegistrationPage() {
               <Share2 className="w-5 h-5 text-zinc-900 dark:text-zinc-100" /> Collect Responses & Share Form
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Anyone with this link can fill out your registration form and receive an instant entry pass.
+              Anyone with this link can fill out your registration form after verifying their email with a code. Entry passes follow your approval settings.
             </DialogDescription>
           </DialogHeader>
 

@@ -22,6 +22,29 @@ module.exports=async function browserChecks({base,db,test,assert,event,a,second,
   await test('BROWSER form builder hydrates and renders questions',async()=>{
    await page.goto(base+`/events/${event._id}/registration`);await page.locator('input[value="First Name"]').first().waitFor({timeout:15000});assert.equal(errors.length,0,errors.join('\n'));
   });
+  await test('BROWSER public registration requires an email OTP before submission',async()=>{
+   await page.goto(base+'/r/summit-a');
+   const publicForm=await (await page.request.get(base+'/api/r/summit-a')).json();
+   const email='browser-attendee-otp@example.test';
+   for(const field of publicForm.form.fields.filter(field=>field.required&&!field.hidden)) {
+    const placeholder=field.placeholder||`Enter ${field.label.toLowerCase()}...`;
+    await page.getByPlaceholder(placeholder,{exact:true}).fill(field.type==='email'?email:'Browser Attendee');
+   }
+   assert(await page.getByRole('button',{name:'Complete Registration',exact:true}).isDisabled());
+   const requested=page.waitForResponse(response=>response.url().endsWith('/registration/email-otp')&&response.request().method()==='POST');
+   await page.getByRole('button',{name:'Send verification code',exact:true}).click();assert.equal((await requested).status(),202);
+   const job=await db.collection('jobs').findOne({type:'email',eventId:event._id},{sort:{createdAt:-1}});
+   const payload=require('../src/lib/job-encryption.ts').decryptJobPayload(job.encryptedPayload);
+   assert.equal(payload.to,email);const code=payload.text.match(/code is (\d{6})/)[1];
+   await page.getByLabel('Email verification code',{exact:true}).fill(code);
+   await page.getByRole('button',{name:'Verify code',exact:true}).click();
+   await page.getByRole('status').filter({hasText:`Email verified: ${email}`}).waitFor();
+   assert(await page.getByRole('button',{name:'Complete Registration',exact:true}).isEnabled());
+   await page.screenshot({path:path.join(__dirname,'../docs/test-results/registration-email-verified.png'),fullPage:true});
+   const submitted=page.waitForResponse(response=>response.url().endsWith('/api/r/summit-a')&&response.request().method()==='POST');
+   await page.getByRole('button',{name:'Complete Registration',exact:true}).click();assert.equal((await submitted).status(),200);
+   assert(await db.collection('registration_submissions').findOne({emailVerifiedAt:{$exists:true},eventId:event._id,[`answers.${publicForm.form.fields.find(field=>field.type==='email').id}`]:email}));
+  });
   await test('BROWSER Guest Library exports selected registration data by mouse and keyboard',async()=>{
    const {ObjectId}=require('mongodb'),fs=require('node:fs'),Papa=require('papaparse');
    const selectedId=new ObjectId(),otherId=new ObjectId();

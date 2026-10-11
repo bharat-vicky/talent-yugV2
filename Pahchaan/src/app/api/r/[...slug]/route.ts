@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { eventRepository } from "@/infrastructure/repositories/EventRepository";
 import { registrationFormRepository } from "@/infrastructure/repositories/RegistrationFormRepository";
 import { RegistrationService } from "@/application/services/RegistrationService";
-import { assertRegistrationOpen, RegistrationError } from "@/lib/registration-validation";
+import { assertRegistrationOpen, RegistrationError, validateRegistrationAnswers } from "@/lib/registration-validation";
+import { registrationEmailFields } from "@/lib/registration-email";
+import { RegistrationEmailVerification } from "@/application/services/RegistrationEmailVerification";
+import { withTransaction } from "@/infrastructure/transaction";
+import crypto from "node:crypto";
 import { readJson, checkOrigin, rateLimit, httpError } from "@/lib/http";
 
 export async function GET(
@@ -29,7 +33,7 @@ export async function GET(
     const publicForm = {
       _id: form._id,
       eventId: form.eventId,
-      fields: form.fields,
+      fields: registrationEmailFields(form.fields),
       settings: {
         openDate: form.settings?.openDate,
         closeDate: form.settings?.closeDate,
@@ -71,15 +75,27 @@ export async function POST(
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 
-    const submission = await RegistrationService.submitRegistration(
+    const form = await registrationFormRepository.getOrCreateForEvent(event.workspaceId, String(event._id));
+    assertRegistrationOpen(event, form);
+    const fields = registrationEmailFields(form.fields);
+    const validatedAnswers = validateRegistrationAnswers(fields, answers as Record<string, unknown>);
+    const emailField = fields.find(field => field.type === "email")!;
+    const email = validatedAnswers[emailField.id];
+    if (typeof email !== "string" || !email.trim()) throw new RegistrationError("Enter and verify your email address.");
+    const retryKey = req.headers.get("idempotency-key") || crypto.randomUUID();
+    const submission = await withTransaction(async () => {
+      const emailVerifiedAt = await RegistrationEmailVerification.consume(String(event._id), email, body.emailProof, retryKey);
+    return await RegistrationService.submitRegistration(
       event._id as string,
-      answers as Record<string, unknown>,
+      validatedAnswers,
       {
         ip: process.env.TRUST_PROXY === "true" ? req.headers.get("x-forwarded-for")?.split(",")[0].slice(0,64) : undefined,
         userAgent: req.headers.get("user-agent")?.slice(0,512) || ""
       },
-      req.headers.get("idempotency-key") || undefined
+      retryKey,
+      emailVerifiedAt
     );
+    });
 
     return NextResponse.json({ success: true, status: submission.status });
   } catch (error: unknown) {

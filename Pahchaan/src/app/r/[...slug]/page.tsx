@@ -36,6 +36,45 @@ export default function PublicRegistrationPage({ params }: { params: Promise<{ s
   const [focusedFieldId, setFocusedFieldId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const retryKey = useRef("");
+  const [otp, setOtp] = useState("");
+  const [challenge, setChallenge] = useState<{email: string; value: string} | null>(null);
+  const [verification, setVerification] = useState<{email: string; proof: string; expiresAt: number} | null>(null);
+  const [otpBusy, setOtpBusy] = useState(false);
+  const [otpMessage, setOtpMessage] = useState("");
+  const [otpError, setOtpError] = useState("");
+  const [resendAt, setResendAt] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+  const emailField = form?.fields?.find(field => field.type === "email");
+  const attendeeEmail = String(emailField ? answers[emailField.id] ?? "" : "").trim().toLowerCase();
+  const currentEmail = useRef(attendeeEmail);
+  useEffect(() => { currentEmail.current = attendeeEmail; }, [attendeeEmail]);
+  const emailVerified = !!verification && verification.email === attendeeEmail && verification.expiresAt > now;
+  useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(timer); }, []);
+
+  const emailOtp = async (action: "send" | "verify") => {
+    const email = attendeeEmail;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setOtpError("Enter a valid email address in the form first."); return; }
+    setOtpBusy(true); setOtpError(""); setOtpMessage("");
+    try {
+      const res = await fetch("/pahchaan/api/registration/email-otp", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({slug, email, action, ...(action === "verify" ? {challenge: challenge?.value, code: otp} : {})}),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Could not verify your email. Please try again.");
+      if (currentEmail.current !== email) return;
+      if (action === "send") {
+        setChallenge({email, value: result.challenge}); setOtp(""); setVerification(null);
+        setResendAt(Date.now() + result.resendAfter * 1000);
+        setOtpMessage("Your code is on its way. Check your inbox and spam folder. It expires in 10 minutes.");
+      } else {
+        setVerification({email, proof: result.proof, expiresAt: Date.now() + result.expiresIn * 1000});
+        setOtp(""); setOtpMessage("Email verified. You can now complete your registration.");
+      }
+    } catch (err) { if (currentEmail.current === email) setOtpError(err instanceof Error ? err.message : "Please try again."); }
+    finally { setOtpBusy(false); }
+  };
+
 
   useEffect(() => {
     fetch(`/pahchaan/api/r/${encodeURIComponent(slug)}`)
@@ -86,6 +125,10 @@ export default function PublicRegistrationPage({ params }: { params: Promise<{ s
   };
 
   const handleFieldChange = (fieldId: string, value: string, type: string) => {
+    if (fieldId === emailField?.id) {
+      currentEmail.current = value.trim().toLowerCase();
+      setVerification(null); setChallenge(null); setOtp(""); setOtpMessage(""); setOtpError(""); retryKey.current = "";
+    }
     setAnswers(prev => ({ ...prev, [fieldId]: value }));
     validateField(fieldId, value, type);
   };
@@ -109,6 +152,7 @@ export default function PublicRegistrationPage({ params }: { params: Promise<{ s
       return;
     }
 
+    if (!emailVerified) { setOtpError("Verify your email before submitting your registration."); return; }
     setSubmitting(true);
     setError(null);
 
@@ -116,7 +160,7 @@ export default function PublicRegistrationPage({ params }: { params: Promise<{ s
       const res = await fetch(`/pahchaan/api/r/${encodeURIComponent(slug)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Idempotency-Key": retryKey.current || (retryKey.current = crypto.randomUUID()) },
-        body: JSON.stringify({ answers })
+        body: JSON.stringify({ answers, emailProof: verification?.proof })
       });
       const data = await res.json();
       
@@ -419,6 +463,31 @@ export default function PublicRegistrationPage({ params }: { params: Promise<{ s
                 })}
               </div>
 
+              <section className="rounded-2xl border border-emerald-900/15 bg-emerald-50/50 p-5 space-y-3" aria-label="Verify registration email">
+                <h2 className="text-lg font-semibold text-zinc-900">Verify your email</h2>
+                <p className="text-sm text-zinc-600">We’ll send a six-digit code to your email address. Verify it to complete your registration and receive your event updates.</p>
+                {emailVerified ? (
+                  <p className="flex items-center gap-2 text-sm font-medium text-emerald-800" role="status"><CheckCircle2 className="h-4 w-4" />Email verified: {attendeeEmail}</p>
+                ) : (
+                  <>
+                    <Button type="button" variant="outline" disabled={otpBusy || now < resendAt || !attendeeEmail} onClick={() => emailOtp("send")}>
+                      {otpBusy ? "Please wait…" : now < resendAt ? `Resend in ${Math.ceil((resendAt - now) / 1000)}s` : challenge?.email === attendeeEmail ? "Resend code" : "Send verification code"}
+                    </Button>
+                    {challenge?.email === attendeeEmail && (
+                      <div className="space-y-2">
+                        <label htmlFor="registration-otp" className="text-sm font-medium">Email verification code</label>
+                        <div className="flex gap-2">
+                          <Input id="registration-otp" inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="Six-digit code" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ""))} />
+                          <Button type="button" disabled={otpBusy || otp.length !== 6} onClick={() => emailOtp("verify")}>Verify code</Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+                {otpMessage && !emailVerified && <p role="status" className="text-sm text-emerald-800">{otpMessage}</p>}
+                {otpError && <p role="alert" className="text-sm text-red-700">{otpError}</p>}
+              </section>
+
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -429,7 +498,7 @@ export default function PublicRegistrationPage({ params }: { params: Promise<{ s
                   type="submit" 
                   size="lg" 
                   className="w-full text-base font-bold h-14 rounded-2xl bg-zinc-900 text-white hover:bg-zinc-800 transition-colors shadow-md group" 
-                  disabled={submitting}
+                  disabled={submitting || !emailVerified}
                 >
                   {submitting ? (
                     <Loader2 className="w-5 h-5 animate-spin mx-auto" />

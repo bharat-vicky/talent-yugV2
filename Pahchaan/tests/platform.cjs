@@ -443,6 +443,7 @@ async function main() {
       for (const action of ["WORKSPACE_CREATED", "EVENT_CREATED", "GUEST_CHECKED_IN"]) assert(await db.collection("audit_logs").findOne({ action, workspaceId: a._id }));
     });
     await require("./hardening.cjs")({ from, db, test, assert, owner, a, b, event, other, answers, password, setSession: value => { session = value; } });
+    await require("./registration-otp.cjs")({from,db,test,assert,event,other,form,answers,publicRoute,request,context});
     if (process.argv.includes("--http")) {
       const { spawn } = require("node:child_process");
       const net = require("node:net");
@@ -457,7 +458,7 @@ async function main() {
       const base = `http://127.0.0.1:${port}/pahchaan`;
       const server = spawn(process.execPath, [path.join(root, "node_modules/next/dist/bin/next"), "start", "-p", String(port), "-H", "127.0.0.1"], {
         cwd: root, windowsHide: true,
-        env: { ...process.env, NODE_ENV: "production", NEXTAUTH_URL: `${base}/api/auth`, NEXTAUTH_URL_INTERNAL: `${base}/api/auth`, NEXT_PUBLIC_APP_URL: base, NEXTAUTH_SECRET: "", JOB_ENCRYPTION_KEY: "", SMTP_HOST: process.argv.includes("--browser") ? "127.0.0.1" : "", SMTP_USER: process.argv.includes("--browser") ? "isolated-test" : "", SMTP_PASS: process.argv.includes("--browser") ? "isolated-test" : "", SMTP_FROM: "test@example.test", AUTH_GOOGLE_ID: "test", AUTH_GOOGLE_SECRET: "test", GOOGLE_CLIENT_ID: "test", GOOGLE_CLIENT_SECRET: "test" },
+        env: { ...process.env, NODE_ENV: "production", NEXTAUTH_URL: `${base}/api/auth`, NEXTAUTH_URL_INTERNAL: `${base}/api/auth`, NEXT_PUBLIC_APP_URL: base, NEXTAUTH_SECRET: "", JOB_ENCRYPTION_KEY: "", SMTP_HOST: "127.0.0.1", SMTP_USER: "isolated-test", SMTP_PASS: "isolated-test", SMTP_FROM: "test@example.test", AUTH_GOOGLE_ID: "test", AUTH_GOOGLE_SECRET: "test", GOOGLE_CLIENT_ID: "test", GOOGLE_CLIENT_SECRET: "test" },
         stdio: ["ignore", "pipe", "pipe"],
       });
       let logs = "";
@@ -523,14 +524,21 @@ async function main() {
         await test("HTTP invalid registration returns client error", async () => assert.equal((await http("/api/r/summit-a", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answers: {} }) })).status, 400));
         await test("HTTP production registration renders PNG and queues one pass",async()=>{
           const compiledAnswers={...answers,[form.fields.find(f=>f.type==='email').id]:'compiled-qr@example.test'};
-          const options={method:'POST',headers:{'Content-Type':'application/json',Origin:new URL(base).origin,'Idempotency-Key':'compiled-email-retry'},body:JSON.stringify({answers:compiledAnswers})};
+          const otpResponse=await http('/api/registration/email-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slug:'summit-a',email:'compiled-qr@example.test',action:'send'})});
+          assert.equal(otpResponse.status,202);const challenge=(await otpResponse.json()).challenge;
+          const otpJob=await db.collection('jobs').findOne({type:'email',eventId:event._id},{sort:{createdAt:-1}});
+          const otpPayload=from('lib/job-encryption.ts').decryptJobPayload(otpJob.encryptedPayload);
+          const code=otpPayload.text.match(/code is (\d{6})/)[1];
+          const verified=await http('/api/registration/email-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slug:'summit-a',email:'compiled-qr@example.test',action:'verify',challenge,code})});
+          assert.equal(verified.status,200);const emailProof=(await verified.json()).proof;
+          const options={method:'POST',headers:{'Content-Type':'application/json',Origin:new URL(base).origin,'Idempotency-Key':'compiled-email-retry'},body:JSON.stringify({answers:compiledAnswers,emailProof})};
           for(let i=0;i<2;i++){
             const response=await http('/api/r/summit-a',options);
             assert.equal(response.status,200,await response.clone().text());
             assert.equal((await response.json()).status,'approved');
           }
           const decode=from('lib/job-encryption.ts').decryptJobPayload;
-          const jobs=(await db.collection('jobs').find({type:'email',eventId:event._id}).toArray()).map(j=>decode(j.encryptedPayload)).filter(j=>j.to==='compiled-qr@example.test');
+          const jobs=(await db.collection('jobs').find({type:'email',eventId:event._id}).toArray()).map(j=>decode(j.encryptedPayload)).filter(j=>j.to==='compiled-qr@example.test' && j.attachments);
           assert.equal(jobs.length,1); assert.equal(jobs[0].attachments[0].contentType,'image/png');
         });
         await test("HTTP real credentials reject wrong password", async () => {

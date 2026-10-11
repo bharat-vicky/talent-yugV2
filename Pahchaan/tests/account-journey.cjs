@@ -142,6 +142,15 @@ async function main() {
       assert(inbox.at(-1).includes('Badge.pdf'));
       assert(inbox.at(-1).includes('application/pdf'));
     assert.equal(await db.collection('jobs').countDocuments({status:'pending'}),0);
+    const {RegistrationEmailVerification}=from('application/services/RegistrationEmailVerification.ts');
+    const requested=await RegistrationEmailVerification.request('otp-test-event','test-workspace','Welcome Summit','otp-attendee@example.test');
+    const otpJob=await db.collection('jobs').findOne({eventId:'otp-test-event',type:'email'});
+    const otpPayload=from('lib/job-encryption.ts').decryptJobPayload(otpJob.encryptedPayload);
+    const code=otpPayload.text.match(/code is (\d{6})/)[1];
+    assert(await JobQueueService.runNext());
+    assert(inbox.at(-1).includes(code));assert(inbox.at(-1).includes('otp-attendee@example.test'));
+    const verified=await RegistrationEmailVerification.verify('otp-test-event','otp-attendee@example.test',requested.challenge,code);
+    assert(verified.proof);assert.equal(await db.collection('jobs').countDocuments({status:'pending'}),0);
     console.log('PASS: config failure, transaction rollback, email-first signup, SMTP inbox, verification, login, recovery, replay rejection and multipart QR delivery.');
   } finally {
     if (client) await client.close(); if (mongo) await mongo.stop();

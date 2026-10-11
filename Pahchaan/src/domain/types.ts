@@ -576,6 +576,7 @@ export interface RegistrationForm {
 export type RegistrationStatus = "pending" | "approved" | "rejected" | "waitlisted";
 
 export interface RegistrationSubmission {
+  emailVerifiedAt?: Date;
   idempotencyKey?: string;
   requestHash?: string;
   _id?: ObjectId | string;
