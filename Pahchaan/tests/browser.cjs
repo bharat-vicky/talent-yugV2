@@ -45,6 +45,25 @@ module.exports=async function browserChecks({base,db,test,assert,event,a,second,
    await page.getByRole('button',{name:'Complete Registration',exact:true}).click();assert.equal((await submitted).status(),200);
    assert(await db.collection('registration_submissions').findOne({emailVerifiedAt:{$exists:true},eventId:event._id,[`answers.${publicForm.form.fields.find(field=>field.type==='email').id}`]:email}));
   });
+  await test('BROWSER Guest Library navigates every page and clears selection',async()=>{
+    const prefix='BrowserPagination';
+    await db.collection('guests').insertMany(Array.from({length:55},(_,i)=>({workspaceId:a._id,eventId:event._id,firstName:prefix+String(i).padStart(2,'0'),lastName:'Attendee',status:'approved',createdAt:new Date(),groupIds:[],tags:[],checkIns:[]})));
+    try {
+      await page.goto(base+`/events/${event._id}/guests`);
+      await page.getByPlaceholder('Search by name, email, or company...').fill(prefix);
+      await page.getByText('55 guests · Page 1 of 2',{exact:true}).waitFor();
+      await page.getByRole('checkbox',{name:/Select BrowserPagination/}).first().check();
+      await page.getByRole('button',{name:'Next page',exact:true}).click();
+      await page.getByText('55 guests · Page 2 of 2',{exact:true}).waitFor();
+      assert.equal(await page.getByRole('checkbox',{name:/Select BrowserPagination/}).count(),5);
+      assert.equal(await page.getByRole('button',{name:'More Actions',exact:true}).count(),0);
+      assert(await page.getByRole('button',{name:'Next page',exact:true}).isDisabled());
+      await page.screenshot({path:path.join(__dirname,'../docs/test-results/guest-pagination.png'),fullPage:true});
+      await page.getByRole('button',{name:'Previous page',exact:true}).click();
+      await page.getByText('55 guests · Page 1 of 2',{exact:true}).waitFor();
+      assert.equal(await page.getByRole('checkbox',{name:/Select BrowserPagination/}).count(),50);
+    } finally {await db.collection('guests').deleteMany({eventId:event._id,firstName:{$regex:'^'+prefix}});}
+  });
   await test('BROWSER Guest Library exports selected registration data by mouse and keyboard',async()=>{
    const {ObjectId}=require('mongodb'),fs=require('node:fs'),Papa=require('papaparse');
    const selectedId=new ObjectId(),otherId=new ObjectId();

@@ -31,7 +31,7 @@ export function NotificationBell({ eventId }: { eventId: string }) {
   const [markingRead, setMarkingRead] = useState<boolean>(false);
 
   const fetchNotifications = async () => {
-    if (!eventId) return;
+    if (!eventId || document.hidden) return;
     try {
       const res = await fetch(`/pahchaan/api/events/${eventId}/notifications/feed?limit=6`);
       if (res.ok) {
@@ -48,8 +48,9 @@ export function NotificationBell({ eventId }: { eventId: string }) {
   useEffect(() => {
     const controller=new AbortController();
     fetch(`/pahchaan/api/events/${eventId}/notifications/feed?limit=6`,{signal:controller.signal}).then(r=>r.json()).then(data=>{setNotifications(data.notifications||[]);setUnreadCount(data.unreadCount||0);setShowBadge(data.showDashboardBadge??true);}).catch(()=>{});
-    const interval = setInterval(fetchNotifications, 3000); // 3-second real-time poll
-    return () => {controller.abort();clearInterval(interval);};
+    const interval = setInterval(fetchNotifications, 15000);
+    window.addEventListener("focus", fetchNotifications);
+    return () => {controller.abort();clearInterval(interval);window.removeEventListener("focus", fetchNotifications);};
   }, [eventId]);
 
   const handleMarkAllRead = async () => {

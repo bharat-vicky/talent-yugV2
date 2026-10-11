@@ -39,6 +39,11 @@ while (running) {
       previousFailure = failure;
     } else {
       if (failures) console.log("Job runner connection restored.");
+      const result = await response.json();
+      if (result.health && (result.health.failedLastDay || result.health.oldestPendingSeconds > 120))
+        console.warn("Delivery queue needs attention", result.health);
+      // Drain a busy queue promptly, without busy polling an empty one.
+      delay = result.processed >= 10 ? 1000 : 5000;
       failures = 0;
       previousFailure = "";
     }

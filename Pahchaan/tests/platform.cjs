@@ -444,6 +444,7 @@ async function main() {
     });
     await require("./hardening.cjs")({ from, db, test, assert, owner, a, b, event, other, answers, password, setSession: value => { session = value; } });
     await require("./registration-otp.cjs")({from,db,test,assert,event,other,form,answers,publicRoute,request,context});
+    await require("./capacity.cjs")({from,db,test,assert,event,owner,setSession: value => {session=value;}});
     if (process.argv.includes("--http")) {
       const { spawn } = require("node:child_process");
       const net = require("node:net");

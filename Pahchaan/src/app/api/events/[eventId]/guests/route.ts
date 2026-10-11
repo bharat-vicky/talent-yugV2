@@ -23,8 +23,9 @@ export async function GET(
     if (!hasAccess) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const searchParams = req.nextUrl.searchParams;
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "50");
+    const page = Number(searchParams.get("page") || "1");
+    const limit = Number(searchParams.get("limit") || "50");
+    if (!Number.isSafeInteger(page) || page < 1 || page > 100000 || !Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new HttpError("Invalid pagination. Use a positive page and a limit from 1 to 100.", 400);
     const status = searchParams.get("status") || undefined;
     const search = searchParams.get("search") || undefined;
     const groupId = searchParams.get("groupId") || undefined;

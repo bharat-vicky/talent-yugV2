@@ -42,7 +42,7 @@ export class RegistrationEmailVerification {
       }, {upsert: true});
       await EmailService.sendEmail(workspaceId, email, "Your Pahchaan registration verification code",
         `<div style="font-family:Arial,sans-serif;color:#184c40;max-width:520px;margin:auto;padding:32px"><h2>One step closer to your next gathering.</h2><p>Verify your email to register for <strong>${escape(eventName)}</strong>.</p><p style="font-size:32px;font-weight:bold;letter-spacing:8px">${code}</p><p>This code expires in 10 minutes. Enter it on the registration form. Please do not share it.</p><p>If you did not request this code, you can ignore this email.</p><p>Pahchaan by TalentYug</p></div>`, undefined, eventId,
-        `Your verification code is ${code}. It expires in 10 minutes. Enter it on the Pahchaan registration form. Do not share this code. If you did not request it, ignore this email.`);
+        `Your verification code is ${code}. It expires in 10 minutes. Enter it on the Pahchaan registration form. Do not share this code. If you did not request it, ignore this email.`, {priority: 100, deliveryDeadline: new Date(Date.now() + 10 * 60000)});
     });
     return {challenge, expiresIn: 600, resendAfter: 60};
   }

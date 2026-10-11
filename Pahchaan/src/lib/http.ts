@@ -68,18 +68,16 @@ export async function rateLimit(
       ? request.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
         "unknown"
       : "shared";
+  // Check the individual allowance first so one abusive address cannot drain
+  // the shared deployment allowance with repeated rejected requests.
+  if (identity && !(await RateLimitService.consume(`${scope}:identity:${identity}`, limit, 600000)))
+    throw new HttpError("Too many requests. Try again later.", 429);
   if (
     !(await RateLimitService.consume(
       `${scope}:ip:${ip}`,
-      limit * (ip === "shared" ? 10 : 1),
+      ip === "shared" ? Math.max(500, limit * 10) : limit,
       600000,
-    )) ||
-    (identity &&
-      !(await RateLimitService.consume(
-        `${scope}:identity:${identity}`,
-        limit,
-        600000,
-      )))
+    ))
   )
     throw new HttpError("Too many requests. Try again later.", 429);
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, use } from "react";
+import { useState, useEffect, use } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { 
@@ -43,6 +43,8 @@ import { selectedGuestsCsv } from "@/lib/guest-export";
 
 export default function GuestLibraryPage({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = use(params);
+  const [page, setPage] = useState(1);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedGuests, setSelectedGuests] = useState<Set<string>>(new Set());
@@ -58,22 +60,33 @@ export default function GuestLibraryPage({ params }: { params: Promise<{ eventId
     organization: ""
   });
 
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ["guests", eventId, search, statusFilter],
-    queryFn: async () => {
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 350);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const { data: result, isLoading, isError, refetch } = useQuery({
+    queryKey: ["guests", eventId, debouncedSearch, statusFilter, page],
+    queryFn: async ({signal}) => {
       const url = new URL(`/pahchaan/api/events/${eventId}/guests`, window.location.origin);
-      if (search) url.searchParams.set("search", search);
+      url.searchParams.set("page", String(page));
+      url.searchParams.set("limit", "50");
+      if (debouncedSearch) url.searchParams.set("search", debouncedSearch);
       if (statusFilter !== "all") url.searchParams.set("status", statusFilter);
       
-      const res = await fetch(url.toString());
+      const res = await fetch(url.toString(), {signal});
       const json = await res.json();
       if (!json.success) throw new Error(json.error);
-      return json.data as GuestDocument[];
+      return {guests: json.data as GuestDocument[], meta: json.meta as {total: number; totalPages: number; page: number; limit: number}};
     },
-    refetchInterval: 2000,
-    staleTime: 0,
+    refetchInterval: 15000,
+    refetchIntervalInBackground: false,
+    staleTime: 10000,
     refetchOnWindowFocus: true
   });
+
+  const data = result?.guests;
+  const changePage = (next: number) => {setPage(next); setSelectedGuests(new Set());};
 
   const toggleSelect = (id: string) => {
     const newSet = new Set(selectedGuests);
@@ -311,7 +324,7 @@ export default function GuestLibraryPage({ params }: { params: Promise<{ eventId
               placeholder="Search by name, email, or company..." 
               className="pl-9 bg-background"
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setSelectedGuests(new Set()); }}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); setSelectedGuests(new Set()); }}
             />
           </div>
           
@@ -323,7 +336,7 @@ export default function GuestLibraryPage({ params }: { params: Promise<{ eventId
             <select 
               className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               value={statusFilter}
-              onChange={(e) => { setStatusFilter(e.target.value); setSelectedGuests(new Set()); }}
+              onChange={(e) => { setStatusFilter(e.target.value); setPage(1); setSelectedGuests(new Set()); }}
             >
               <option value="all">All Statuses</option>
               <option value="approved">Approved</option>
@@ -386,6 +399,8 @@ export default function GuestLibraryPage({ params }: { params: Promise<{ eventId
               </div>
             ))}
           </div>
+        ) : isError ? (
+          <div className="p-8 text-center" role="alert">Could not load guests. <Button variant="outline" onClick={() => refetch()}>Try again</Button></div>
         ) : !data || data.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-12 m-8 rounded-xl border border-border/50 border-dashed bg-muted/10 min-h-[400px]">
             <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-background mb-6 shadow-sm border border-border/50">
@@ -501,6 +516,15 @@ export default function GuestLibraryPage({ params }: { params: Promise<{ eventId
           </table>
         )}
       </div>
+      {result && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t p-4" aria-label="Guest pagination">
+          <p className="text-sm text-muted-foreground" aria-live="polite">{result.meta.total} guests · Page {page} of {Math.max(1, result.meta.totalPages)}</p>
+          <div className="flex gap-2">
+            <Button variant="outline" disabled={isLoading || page <= 1} onClick={() => changePage(page - 1)}>Previous page</Button>
+            <Button variant="outline" disabled={isLoading || page >= result.meta.totalPages} onClick={() => changePage(page + 1)}>Next page</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

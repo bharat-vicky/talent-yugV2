@@ -64,7 +64,9 @@ export default function getMongoClient(): Promise<MongoClient> {
               db
                 .collection("realtime_events")
                 .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
-              db.collection("jobs").createIndex({ status: 1, availableAt: 1 }),
+              db.collection("jobs").createIndex({ status: 1, priority: -1, availableAt: 1, createdAt: 1 }),
+              db.collection("jobs").createIndex({status: 1, createdAt: 1}),
+              db.collection("jobs").createIndex({status: 1, updatedAt: 1}),
               db
                 .collection("jobs")
                 .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
@@ -74,7 +76,8 @@ export default function getMongoClient(): Promise<MongoClient> {
               db.collection("events").createIndex({ slug: 1 }),
               db.collection("events").createIndex({ uniqueSlug: 1 }),
               db.collection("events").createIndex({ workspaceId: 1 }),
-              db.collection("guests").createIndex({ eventId: 1, status: 1 }),
+              db.collection("guests").createIndex({ eventId: 1, status: 1, createdAt: -1, _id: -1 }),
+              db.collection("guests").createIndex({ eventId: 1, createdAt: -1, _id: -1 }),
               db.collection("guests").createIndex({ eventId: 1, qrCodeId: 1 }),
               db.collection("guests").createIndex({ eventId: 1, email: 1 }),
               db
@@ -86,6 +89,7 @@ export default function getMongoClient(): Promise<MongoClient> {
               db
                 .collection("registration_submissions")
                 .createIndex({ eventId: 1, status: 1 }),
+              db.collection("registration_submissions").createIndex({eventId: 1, submittedAt: -1, _id: -1}),
               db.collection("qr_codes").createIndex({ eventId: 1 }),
               db.collection("qr_codes").createIndex({ shortId: 1 }),
               db.collection("memberships").createIndex({ userId: 1 }),

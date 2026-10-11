@@ -37,7 +37,7 @@ export class GuestRepository extends MongoRepository<GuestDocument> {
 
     const collection = await this.getCollection();
     
-    const cursor = collection.find(filter as unknown as import("mongodb").Filter<import("mongodb").Document>).sort({ createdAt: -1 });
+    const cursor = collection.find(filter as unknown as import("mongodb").Filter<import("mongodb").Document>).sort({ createdAt: -1, _id: -1 });
     
     if (options?.skip !== undefined) cursor.skip(options.skip);
     if (options?.limit !== undefined) cursor.limit(options.limit);

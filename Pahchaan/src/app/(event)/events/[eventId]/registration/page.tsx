@@ -185,6 +185,10 @@ function SortableFieldItem({ field, index, handleFieldChange, removeField }: {fi
 export default function RegistrationPage() {
   const { event } = useEvent();
   const [formConfig, setFormConfig] = useState<RegistrationForm | null>(null);
+  const [responsePage, setResponsePage] = useState(1);
+  const [responseTotal, setResponseTotal] = useState(0);
+  const [responsePages, setResponsePages] = useState(1);
+  const [responsesError, setResponsesError] = useState(false);
   const [submissions, setSubmissions] = useState<(Omit<RegistrationSubmission, "_id"> & { _id: string; qrCodeId?: string })[]>([]);
   const [loadingForm, setLoadingForm] = useState(true);
   const [loadingSubmissions, setLoadingSubmissions] = useState(true);
@@ -267,10 +271,12 @@ export default function RegistrationPage() {
 
   const fetchSubmissions = async () => {
     try {
-      const res = await fetch(`/pahchaan/api/events/${event._id}/registration/submissions`);
+      const res = await fetch(`/pahchaan/api/events/${event._id}/registration/submissions?page=${responsePage}&limit=50`);
       if (res.ok) {
         const data = await res.json();
         setSubmissions(data);
+        setResponseTotal(Number(res.headers.get("X-Total-Count") || data.length));
+        setResponsePages(Math.max(1, Number(res.headers.get("X-Total-Pages") || 1)));
       }
     } catch (e) {
       console.error(e);
@@ -285,9 +291,26 @@ export default function RegistrationPage() {
     const controller = new AbortController();
     fetch('/pahchaan/api/events/form-presets', { signal: controller.signal }).then(r=>r.json()).then(data=>setSavedTemplates((data.data || []).map((preset: FormPresetDoc)=>({...preset,id:preset._id || preset.id})))).catch(()=>{});
     fetch(`/pahchaan/api/events/${event._id}/registration/schema`, { signal: controller.signal }).then(r=>r.json()).then(data=>setFormConfig(data)).finally(()=>setLoadingForm(false)).catch(()=>{});
-    fetch(`/pahchaan/api/events/${event._id}/registration/submissions`, { signal: controller.signal }).then(r=>r.json()).then(data=>setSubmissions(data)).finally(()=>setLoadingSubmissions(false)).catch(()=>{});
+
     return ()=>controller.abort();
   }, [event._id]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`/pahchaan/api/events/${event._id}/registration/submissions?page=${responsePage}&limit=50`, {signal: controller.signal})
+      .then(async res => {
+        if (!res.ok) throw new Error("Could not load responses");
+        const data = await res.json();
+        if (controller.signal.aborted) return;
+        setSubmissions(data);
+        setResponseTotal(Number(res.headers.get("X-Total-Count") || data.length));
+        setResponsePages(Math.max(1, Number(res.headers.get("X-Total-Pages") || 1)));
+        setResponsesError(false);
+      })
+      .catch(() => {if (!controller.signal.aborted) setResponsesError(true);})
+      .finally(() => {if (!controller.signal.aborted) setLoadingSubmissions(false);});
+    return () => controller.abort();
+  }, [event._id, responsePage]);
 
   const handleSettingChange = (key: string, checked: boolean) => {
     setFormConfig((prev) => prev ? ({
@@ -538,7 +561,7 @@ export default function RegistrationPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col gap-6">
         <TabsList className="w-full justify-start h-14 p-1.5 bg-card/50 border border-border/50 rounded-xl overflow-x-auto flex-nowrap backdrop-blur-xl shadow-sm">
           <TabsTrigger value="builder" className="rounded-lg px-6 py-2.5 text-sm font-medium">Form Builder</TabsTrigger>
-          <TabsTrigger value="submissions" className="rounded-lg px-6 py-2.5 text-sm font-medium">Responses ({submissions.length})</TabsTrigger>
+          <TabsTrigger value="submissions" className="rounded-lg px-6 py-2.5 text-sm font-medium">Responses ({responseTotal})</TabsTrigger>
           <TabsTrigger value="templates" className="rounded-lg px-6 py-2.5 text-sm font-medium flex items-center gap-2">
             <LayoutTemplate className="w-4 h-4 text-primary" /> Form Presets ({savedTemplates.length})
           </TabsTrigger>
@@ -810,6 +833,8 @@ export default function RegistrationPage() {
                 <Skeleton className="h-12 w-full rounded-lg" />
                 <Skeleton className="h-12 w-full rounded-lg" />
               </div>
+            ) : responsesError ? (
+              <p role="alert">Could not load responses. Please refresh this page to try again.</p>
             ) : submissions.length > 0 ? (
               <div className="border border-border/50 rounded-xl overflow-x-auto">
                 <table className="w-full text-sm text-left">
@@ -896,6 +921,13 @@ export default function RegistrationPage() {
                 <p className="text-muted-foreground">When guests register for your event, their submissions will appear here.</p>
               </div>
             )}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground" aria-live="polite">{responseTotal} responses · Page {responsePage} of {responsePages}</p>
+              <div className="flex gap-2">
+                <Button variant="outline" disabled={loadingSubmissions || responsePage <= 1} onClick={() => {setLoadingSubmissions(true); setResponsePage(responsePage - 1);}}>Previous responses</Button>
+                <Button variant="outline" disabled={loadingSubmissions || responsePage >= responsePages} onClick={() => {setLoadingSubmissions(true); setResponsePage(responsePage + 1);}}>Next responses</Button>
+              </div>
+            </div>
           </TabsContent>
 
           {/* TAB: SETTINGS */}

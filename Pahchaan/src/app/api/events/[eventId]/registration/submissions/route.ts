@@ -1,3 +1,4 @@
+import {HttpError,httpError} from "@/lib/http";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -20,7 +21,13 @@ export async function GET(
     const hasAccess = await RBACService.checkPermission(session.user.id, event.workspaceId, "viewer");
     if (!hasAccess) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    const submissions = await registrationSubmissionRepository.findByEventId(eventId);
+    const page = Number(req.nextUrl.searchParams.get("page") || "1");
+    const limit = Number(req.nextUrl.searchParams.get("limit") || "50");
+    if (!Number.isSafeInteger(page) || page < 1 || page > 100000 || !Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new HttpError("Invalid pagination",400);
+    const [submissions, total] = await Promise.all([
+      registrationSubmissionRepository.findByEventId(eventId, {}, {skip: (page - 1) * limit, limit}),
+      registrationSubmissionRepository.countByEventId(eventId),
+    ]);
     
     // Fetch associated guests to get qrCodeId and guestId
     const { guestRepository } = await import("@/infrastructure/repositories/GuestRepository");
@@ -79,8 +86,9 @@ export async function GET(
       };
     });
     
-    return NextResponse.json(populatedSubmissions);
+    return NextResponse.json(populatedSubmissions, {headers: {"X-Total-Count": String(total), "X-Total-Pages": String(Math.ceil(total / limit)), "Cache-Control": "no-store"}});
   } catch (error: unknown) {
+    if (error instanceof HttpError) return httpError(error);
     return NextResponse.json({ error: (error as Error).message || String(error) }, { status: 500 });
   }
 }

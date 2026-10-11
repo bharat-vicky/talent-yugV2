@@ -3,6 +3,7 @@ import { JobQueueService } from "@/application/services/JobQueue";
 import { httpError } from "@/lib/http";
 export const runtime = "nodejs";
 export const maxDuration = 60;
+let nextHealthCheck = 0;
 export async function POST(request: Request) {
   const expected = process.env.JOB_WORKER_SECRET;
   const provided =
@@ -23,7 +24,12 @@ export async function POST(request: Request) {
       (await JobQueueService.runNext())
     )
       processed++;
-    return Response.json({ processed });
+    let health;
+    if (Date.now() >= nextHealthCheck) {
+      nextHealthCheck = Date.now() + 60000;
+      health = await JobQueueService.health();
+    }
+    return Response.json({ processed, health });
   } catch (error) {
     return httpError(error);
   }

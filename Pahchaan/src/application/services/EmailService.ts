@@ -7,9 +7,9 @@ import { guestEmail } from "@/lib/guest-email";
 const escape = (value: string) => value.replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[char]!);
 type Attachment = {filename:string;path?:string;content?:string|Buffer;contentType?:string;cid?:string};
 export class EmailService {
-  static async sendEmail(workspaceId:string,to:string,subject:string,html:string,attachments?:Attachment[],eventId?:string,text?:string):Promise<void> {
+  static async sendEmail(workspaceId:string,to:string,subject:string,html:string,attachments?:Attachment[],eventId?:string,text?:string,queueOptions?:{priority?:number;deliveryDeadline?:Date}):Promise<void> {
     if (attachments?.some(item=>item.path)) throw new Error("File-path attachments are not allowed");
-    await JobQueueService.enqueue("email",{workspaceId,eventId,to,subject,html,text,attachments:attachments?.map(item=>({...item,content:Buffer.isBuffer(item.content)?item.content.toString("base64"):item.content,encoding:Buffer.isBuffer(item.content)?"base64":undefined}))});
+    await JobQueueService.enqueue("email",{workspaceId,eventId,to,subject,html,text,attachments:attachments?.map(item=>({...item,content:Buffer.isBuffer(item.content)?item.content.toString("base64"):item.content,encoding:Buffer.isBuffer(item.content)?"base64":undefined}))},queueOptions);
   }
   static async deliver(payload:Record<string,unknown>):Promise<void> {
     if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS || !process.env.SMTP_FROM) throw new Error("SMTP delivery is not configured");

@@ -161,7 +161,7 @@ export class AccountService {
         subject:
           purpose === "verify" ? "Verify your email" : "Reset your password",
         html: `<p><a href="${url.toString().replace(/&/g, "&amp;")}">${purpose === "verify" ? "Verify email" : "Reset password"}</a></p><p>This link expires in 30 minutes.</p>`,
-      });
+      }, {priority: 100, deliveryDeadline: new Date(Date.now() + 1800000)});
     });
   }
 
