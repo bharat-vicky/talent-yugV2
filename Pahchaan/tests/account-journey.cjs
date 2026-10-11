@@ -132,13 +132,15 @@ async function main() {
     // Deliver a real multipart QR email through the same queue and SMTP sink.
     await db.collection('jobs').deleteMany({status:'pending'});
     const {EmailService}=from('application/services/EmailService.ts');
-    await EmailService.sendGuestBadge('test-workspace',{_id:'test-event',name:'Welcome Summit',date:new Date('2026-12-01T09:00:00Z'),venue:'Patna'},'guest@example.test','Asha',JSON.stringify({guestId:'unique-test-guest'}));
+    await EmailService.sendGuestBadge('test-workspace',{_id:'test-event',name:'Welcome Summit',date:new Date('2026-12-01T09:00:00Z'),venue:'Patna'},'guest@example.test','Asha',JSON.stringify({guestId:'unique-test-guest'}),new (require('jspdf').jsPDF)().output('datauristring'));
     const before=inbox.length;
     assert(await JobQueueService.runNext());
     assert.equal(inbox.length,before+1);
     assert(inbox.at(-1).includes('Content-ID: <check-in-qr>'));
     assert(inbox.at(-1).includes('image/png'));
     assert(inbox.at(-1).includes('Check-in-QR.png'));
+      assert(inbox.at(-1).includes('Badge.pdf'));
+      assert(inbox.at(-1).includes('application/pdf'));
     assert.equal(await db.collection('jobs').countDocuments({status:'pending'}),0);
     console.log('PASS: config failure, transaction rollback, email-first signup, SMTP inbox, verification, login, recovery, replay rejection and multipart QR delivery.');
   } finally {

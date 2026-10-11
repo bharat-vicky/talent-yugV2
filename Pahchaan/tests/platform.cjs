@@ -457,7 +457,7 @@ async function main() {
       const base = `http://127.0.0.1:${port}/pahchaan`;
       const server = spawn(process.execPath, [path.join(root, "node_modules/next/dist/bin/next"), "start", "-p", String(port), "-H", "127.0.0.1"], {
         cwd: root, windowsHide: true,
-        env: { ...process.env, NODE_ENV: "production", NEXTAUTH_URL: `${base}/api/auth`, NEXTAUTH_URL_INTERNAL: `${base}/api/auth`, NEXT_PUBLIC_APP_URL: base, NEXTAUTH_SECRET: "", JOB_ENCRYPTION_KEY: "", SMTP_HOST: "", SMTP_USER: "", SMTP_PASS: "", AUTH_GOOGLE_ID: "test", AUTH_GOOGLE_SECRET: "test", GOOGLE_CLIENT_ID: "test", GOOGLE_CLIENT_SECRET: "test" },
+        env: { ...process.env, NODE_ENV: "production", NEXTAUTH_URL: `${base}/api/auth`, NEXTAUTH_URL_INTERNAL: `${base}/api/auth`, NEXT_PUBLIC_APP_URL: base, NEXTAUTH_SECRET: "", JOB_ENCRYPTION_KEY: "", SMTP_HOST: process.argv.includes("--browser") ? "127.0.0.1" : "", SMTP_USER: process.argv.includes("--browser") ? "isolated-test" : "", SMTP_PASS: process.argv.includes("--browser") ? "isolated-test" : "", SMTP_FROM: "test@example.test", AUTH_GOOGLE_ID: "test", AUTH_GOOGLE_SECRET: "test", GOOGLE_CLIENT_ID: "test", GOOGLE_CLIENT_SECRET: "test" },
         stdio: ["ignore", "pipe", "pipe"],
       });
       let logs = "";

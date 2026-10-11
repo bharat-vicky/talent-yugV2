@@ -50,6 +50,19 @@ module.exports=async function browserChecks({base,db,test,assert,event,a,second,
     await page.getByRole('menuitem',{name:'Export Selected',exact:true}).focus();
     await page.getByRole('menuitem',{name:'Export Selected',exact:true}).press('Enter');
     assert.equal(await (await keyboardDownload).failure(),null);
+    await page.goto(base+`/events/${event._id}/guests/${selectedId}/badge`);
+    await page.getByRole('button',{name:'Send Invitation',exact:true}).waitFor();
+    const responsePromise=page.waitForResponse(response=>response.url().endsWith('/guests/notify') && response.request().method()==='POST');
+    await page.getByRole('button',{name:'Send Invitation',exact:true}).click();
+    const response=await responsePromise;assert.equal(response.status(),202);assert.equal((await response.json()).count,1);
+    const job=await db.collection('jobs').findOne({type:'email',eventId:event._id},{sort:{createdAt:-1}});
+    const payload=require('../src/lib/job-encryption.ts').decryptJobPayload(job.encryptedPayload);
+    assert.equal(payload.to,'selected-export@example.test');
+    const pdf=payload.attachments.find(item=>item.filename==='Badge.pdf');assert(pdf);assert.equal(Buffer.from(pdf.content,'base64').subarray(0,5).toString(),'%PDF-');
+    assert(payload.attachments.some(item=>item.filename==='Check-in-QR.png'));
+    await page.getByText('Invitation queued with badge attached. Delivery will follow shortly.',{exact:true}).waitFor();
+    await page.screenshot({path:path.join(__dirname,'../docs/test-results/badge-invitation.png'),fullPage:true});
+    await page.goto(base+`/events/${event._id}/guests`);
     await page.getByPlaceholder('Search by name, email, or company...').fill('Other');
     assert.equal(await page.getByRole('button',{name:'More Actions',exact:true}).count(),0);
    } finally { await db.collection('guests').deleteMany({_id:{$in:[selectedId,otherId]}}); }
@@ -60,14 +73,14 @@ module.exports=async function browserChecks({base,db,test,assert,event,a,second,
    const pending=page.waitForResponse(response=>response.url().includes(`/events/${event._id}/scanner/sync`)&&response.request().method()==='POST',{timeout:20000});await page.goto(base+`/events/${event._id}/scanner`);const result=await pending;assert.equal(result.status(),200);assert.equal((await result.json()).results['legacy-offline-browser'].status,'success');assert.equal((await db.collection('qr_codes').findOne({_id:id})).admissionState,'in');
   });
   await test('BROWSER mobile navigation and workspace switching',async()=>{
-   await page.setViewportSize({width:390,height:844});await page.goto(base+'/dashboard');await page.getByRole('button',{name:'Toggle Menu'}).click();await page.getByRole('combobox').filter({hasText:a.name}).click();await page.getByRole('menuitem').filter({hasText:second.name}).click();await page.waitForURL('**/dashboard');await page.waitForTimeout(1000);
+   await page.setViewportSize({width:390,height:844});await page.goto(base+'/dashboard');await page.getByRole('button',{name:'Toggle Menu'}).click();await page.getByRole('combobox').filter({hasText:a.name}).click();const switched=page.waitForResponse(response=>response.url().endsWith('/api/workspaces/active')&&response.request().method()==='POST');await page.getByRole('menuitem').filter({hasText:second.name}).click();assert.equal((await switched).status(),200);await page.waitForURL('**/dashboard');
    const user=await db.collection('users').findOne({email:'owner@example.com'});assert.equal(user.lastActiveWorkspaceId,second._id);assert.equal(errors.length,0,errors.join('\n'));await page.screenshot({path:path.join(__dirname,'../docs/test-results/mobile-dashboard.png'),fullPage:true});
   });
   await context.close();
   const anon=await browser.newContext(),signup=await anon.newPage();
-  await test('BROWSER missing email configuration blocks signup clearly',async()=>{
-   await signup.goto(base+'/signup');await signup.locator('#auth-email').fill('browser-signup@example.com');assert.equal(await signup.locator('#auth-password').count(),0);await signup.getByRole('button',{name:'Continue with email',exact:true}).click();await signup.getByRole('alert').filter({hasText:'Email signup is temporarily unavailable'}).waitFor({timeout:15000});
-   const user=await db.collection('users').findOne({email:'browser-signup@example.com'});assert.equal(user,null);await signup.goto(base+'/dashboard');await signup.waitForURL('**/login?**');
+  await test('BROWSER email signup queues verification and remains signed out',async()=>{
+   await signup.goto(base+'/signup');await signup.locator('#auth-email').fill('browser-signup@example.com');assert.equal(await signup.locator('#auth-password').count(),0);await signup.getByRole('button',{name:'Continue with email',exact:true}).click();await signup.getByText(/Check your inbox/).waitFor({timeout:15000});
+   const user=await db.collection('users').findOne({email:'browser-signup@example.com'});assert(user);assert(!user.emailVerified);await signup.goto(base+'/dashboard');await signup.waitForURL('**/login?**');
   });
   await anon.close();
  }finally{await browser.close();}

@@ -2,6 +2,7 @@ import nodemailer from "nodemailer";
 import { Event } from "@/domain/types";
 import { JobQueueService } from "./JobQueue";
 import QRCode from "qrcode";
+import { badgeAttachment } from "@/lib/badge-attachment";
 import { guestEmail } from "@/lib/guest-email";
 const escape = (value: string) => value.replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[char]!);
 type Attachment = {filename:string;path?:string;content?:string|Buffer;contentType?:string;cid?:string};
@@ -29,7 +30,7 @@ export class EmailService {
   static async sendRejectionNotification(workspaceId:string,eventName:string,to:string) {await this.sendEmail(workspaceId,to,`Update regarding ${eventName}`,"<p>We are unable to approve your registration at this time.</p>");}
   static async sendGuestBadge(workspaceId:string,event:Event,to:string,guestName:string,qrData:string,attachment?:string,customMessage?:string) {
     const attachments:Attachment[]=[{filename:"Check-in-QR.png",content:await QRCode.toBuffer(qrData,{type:"png",width:600,margin:4,errorCorrectionLevel:"M"}),contentType:"image/png",cid:"check-in-qr"}];
-    if(attachment){const match=/^data:(application\/pdf|image\/png);base64,([A-Za-z0-9+/=]+)$/.exec(attachment);if(!match || match[2].length>7*1024*1024)throw new Error("Invalid badge attachment");attachments.push({filename:match[1]==="application/pdf"?"Badge.pdf":"Badge.png",content:Buffer.from(match[2],"base64"),contentType:match[1]});}
+    if(attachment) attachments.push(badgeAttachment(attachment));
     const message=guestEmail(event,guestName,customMessage);
     await this.sendEmail(workspaceId,to,message.subject,message.html,attachments,event._id?.toString(),message.text);
   }

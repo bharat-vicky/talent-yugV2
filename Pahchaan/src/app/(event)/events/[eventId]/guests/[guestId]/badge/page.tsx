@@ -1,5 +1,4 @@
 "use client";
-import { appUrl } from "@/lib/brand";
 
 import { use, useState } from "react";
 import { motion } from "framer-motion";
@@ -17,11 +16,12 @@ export default function BadgeStudioPage({ params }: { params: Promise<{ eventId:
   const [isSending, setIsSending] = useState(false);
   const [customMessage, setCustomMessage] = useState("");
 
-  const { data: guest, isLoading } = useQuery({
+  const { data: guest, isLoading, error } = useQuery({
     queryKey: ["guest", eventId, guestId],
     queryFn: async () => {
       const res = await fetch(`/pahchaan/api/events/${eventId}/guests/${guestId}`);
       const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || "Could not load this badge.");
       return json.data;
     }
   });
@@ -67,7 +67,8 @@ export default function BadgeStudioPage({ params }: { params: Promise<{ eventId:
 
   const handleSendInvitation = async () => {
     const badgeElement = document.getElementById("badge-preview-element");
-    if (!badgeElement) return;
+    if (!badgeElement || isSending) return;
+    if (!guest?.email) { toast.error("Add an email address to this guest before sending an invitation."); return; }
 
     try {
       setIsSending(true);
@@ -104,23 +105,22 @@ export default function BadgeStudioPage({ params }: { params: Promise<{ eventId:
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to send");
+      const result = await res.json();
+      if (!res.ok || !result.success || result.count !== 1) throw new Error(result.error || "Could not queue the invitation. Please try again.");
 
-      toast.success("Invitation sent successfully with badge attached!", { id: "send-toast" });
+      toast.success("Invitation queued with badge attached. Delivery will follow shortly.", { id: "send-toast" });
     } catch (e) {
-      console.error(e);
-      toast.error("Failed to send invitation", { id: "send-toast" });
+      toast.error(e instanceof Error ? e.message : "Failed to send invitation", { id: "send-toast" });
     } finally {
       setIsSending(false);
     }
   };
 
+  if (error) return <div role="alert" className="p-8">{error.message}</div>;
   if (isLoading || !guest) return <div className="p-8">Loading badge...</div>;
 
   // The QR payload (can be URL or JSON)
-  const qrData = guest.qrCodeId
-    ? appUrl(`/q/${guest.qrCodeId}`)
-    : JSON.stringify({ g: guestId });
+  const qrData = JSON.stringify({ guestId });
 
   // Real-Life Conference & Event Inspired Badge Color Themes
   const getThemeStyles = () => {
