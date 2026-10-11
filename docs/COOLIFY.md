@@ -47,6 +47,11 @@ SMTP_FROM=TalentYug <YOUR_VERIFIED_SENDER_ADDRESS>
 `NEXT_PUBLIC_APP_URL` is a **build-time and runtime** variable: Compose explicitly
 passes it into the Pahchaan image build. Redeploy/rebuild after changing the domain.
 All secrets are runtime-only; do not mark them as Docker build arguments.
+The runtime variable references use empty build-time defaults because Coolify
+evaluates the entire Compose file while building images. Their values are still
+required at startup; confirm all required credentials are entered and available
+at runtime before deploying. `www.talentyug.in` redirects to `talentyug.in` to
+keep login cookies on the same host as the OAuth callback.
 `NEXTAUTH_URL_INTERNAL` is already set in Compose to the internal authentication
 endpoint. Do not override it with the public URL.
 
